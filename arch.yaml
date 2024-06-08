@@ -1,0 +1,11 @@
+# Corrected Arch Linux Lima configuration
+name: default
+arch: x86_64  # Change to aarch64 if using an ARM-based Mac
+images:
+  - location: "https://mirrors.edge.kernel.org/archlinux/iso/latest/archlinux-2024.06.01-x86_64.iso"
+    arch: x86_64
+cpus: 2
+memory: "4GiB"
+disk: "20GiB"
+ssh:
+  localPort: 60022  # Port for SSH connection from host to VM
