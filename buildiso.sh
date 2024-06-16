@@ -1,6 +1,23 @@
 #!/bin/bash
 
-set -ex
+set -eux -o pipefail
+
+# Check if nix is installed
+if ! command -v nix-build &>/dev/null; then
+    echo "Nix is not installed. Please install Nix and try again."
+    exit 1
+fi
+
+# Install or skip Lima installation
+if ! nix-env -q | grep lima; then
+  echo "Building Lima package..."
+  nix-build default.nix || { echo "Build failed"; exit 1; }
+  echo "Installing the Lima package..."
+  nix-env -i ./result || { echo "Installation failed"; exit 1; }
+  echo "Lima installed successfully."
+else
+  echo "Lima already installed, skipping installation..."
+fi
 
 USER="$(whoami)"
 LIMA_INSTANCE="arch-builder"
@@ -24,7 +41,6 @@ limactl shell $LIMA_INSTANCE -- sudo mkdir -p /home/$USER/.ssh
 limactl shell $LIMA_INSTANCE -- sudo chown $USER:$USER /home/$USER/.ssh
 
 # Step 4: Copy private and public keys to VM
-limactl shell $LIMA_INSTANCE pwd
 limactl copy "$SSH_KEY_PATH" "${LIMA_INSTANCE}:/home/$USER/.ssh/"
 limactl copy "$SSH_KEY_PATH.pub" "${LIMA_INSTANCE}:/home/$USER/.ssh/"
 
@@ -93,3 +109,7 @@ limactl copy $LIMA_INSTANCE:$ISO_PATH $SCRIPT_DIR/
 # Step 9: Clean up
 limactl stop $LIMA_INSTANCE
 limactl delete $LIMA_INSTANCE
+
+echo "Uninstalling lima"
+nix-env -q lima-0.22.0 || { echo "Uninstall failed"; exit 1; }
+echo "Lima uninstalled"
