@@ -14,20 +14,9 @@ if [ ! -d "out" ]; then
 fi
 
 # Check if nix is installed, if not exit
-if ! command -v nix-build &>/dev/null; then
-    echo "Nix is not installed. Please install Nix and try again."
+if ! command -v limactl &>/dev/null; then
+    echo "Lima is not installed. Please install Lima and try again."
     exit 1
-fi
-
-# Install or skip Lima installation
-if ! nix-env -q | grep lima; then
-  echo "Building Lima package..."
-  nix-build default.nix || { echo "Build failed"; exit 1; }
-  echo "Installing the Lima package..."
-  nix-env -i ./result || { echo "Installation failed"; exit 1; }
-  echo "Lima installed successfully."
-else
-  echo "Lima already installed, skipping installation..."
 fi
 
 USER="$(whoami)"
@@ -121,8 +110,3 @@ limactl copy "${LIMA_INSTANCE}:${VM_ARCHISO_DIR}/releng/out/archlinux-*.iso" "ou
 # Clean up VM resources
 limactl stop $LIMA_INSTANCE
 limactl delete $LIMA_INSTANCE
-
-# Uninstall Lima
-echo "Uninstalling lima"
-nix-env -q lima-0.22.0 || { echo "Uninstall failed"; exit 1; }
-echo "Lima uninstalled"
