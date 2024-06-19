@@ -2,7 +2,7 @@ arch: x86_64
 images:
   - location: "https://mirrors.edge.kernel.org/archlinux/iso/latest/archlinux-2024.06.01-x86_64.iso"
     arch: x86_64
-cpus: 10
+cpus: 16
 memory: "8GiB"
 disk: "20GiB"
 mounts: []
