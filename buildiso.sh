@@ -13,7 +13,7 @@ if [ ! -d "out" ]; then
   mkdir out
 fi
 
-# Check if nix is installed, if not exit
+# Check if limactl is installed, if not exit
 if ! command -v limactl &>/dev/null; then
     echo "Lima is not installed. Please install Lima and try again."
     exit 1
@@ -44,12 +44,10 @@ cat initvm.sh | limactl shell arch-builder -- sudo bash -s
 limactl shell $LIMA_INSTANCE -- sudo mkdir -p ${VM_SSH_KEY_PATH}
 limactl shell $LIMA_INSTANCE -- sudo chown $USER:$USER ${VM_SSH_KEY_PATH}
 
-# Copy private and public keys to VM
-# limactl copy "$SSH_KEY_PATH" "${LIMA_INSTANCE}:${VM_SSH_KEY_PATH}"
+# Copy public keys to VM
 limactl copy "$SSH_KEY_PATH.pub" "${LIMA_INSTANCE}:${VM_SSH_KEY_PATH}"
 
 # Set proper permissions for the copied keys
-# limactl shell $LIMA_INSTANCE -- chmod 600 /mnt/home/$USER/.ssh/arch_provisioning_key
 limactl shell $LIMA_INSTANCE -- chmod 644 /mnt/home/$USER/.ssh/arch_provisioning_key.pub
 
 # Install packages in the VM's chroot environment
@@ -60,10 +58,15 @@ limactl shell $LIMA_INSTANCE -- sudo mkdir -p ${VM_ARCHISO_DIR}
 limactl shell $LIMA_INSTANCE -- sudo cp -r /mnt/usr/share/archiso/configs/releng/ ${VM_ARCHISO_DIR}
 
 # Add openssh to the packages list for the Arch ISO
-limactl shell $LIMA_INSTANCE -- sudo bash -c "echo 'openssh' >> ${VM_ARCHISO_DIR}/releng/packages.x86_64"
-run_in_chroot cat /archiso/releng/packages.x86_64
+limactl shell $LIMA_INSTANCE -- sudo bash -c "echo -e 'openssh\njq' >> ${VM_ARCHISO_DIR}/releng/packages.x86_64"
 
-# Add startup script to enable SSH and add public key for Ansible in live environment
+# Add public key for SSH access
+run_in_chroot mkdir -p /archiso/releng/airootfs/root/.ssh/
+run_in_chroot bash -c "cat > /archiso/releng/airootfs/root/.ssh/authorized_keys" < /home/$USER/.ssh/arch_provisioning_key.pub
+
+run_in_chroot cat /archiso/releng/airootfs/root/.ssh/authorized_keys
+
+# Create the startup script
 run_in_chroot bash -c "cat > /archiso/releng/airootfs/root/startup.sh << 'EOF'
 #!/bin/bash
 
@@ -75,30 +78,42 @@ while ! ping -c 1 google.com &>/dev/null; do
   sleep 1
 done
 
-# Add public key for SSH access
-mkdir -p /root/.ssh
-echo \$(cat /home/\$USER/.ssh/arch_provisioning_key.pub) > /root/.ssh/authorized_keys
-
-# Clear screen to ensure no runoff
-clear
-
-# Show block devices for provisioning
-lsblk
-
 # Print the IP address for the user
-echo 'Arch ISO is ready for Ansible provisioning. Use this IP to connect.'
+echo 'Arch ISO is ready for Ansible provisioning. Use this IP to connect:'
+ip -json route get 8.8.8.8 | jq -r '.[].prefsrc'
 EOF"
 
-limactl shell $LIMA_INSTANCE -- cat ${VM_ARCHISO_DIR}/releng/airootfs/root/startup.sh
+# Ensure the startup script is executable
 limactl shell $LIMA_INSTANCE -- sudo chmod +x ${VM_ARCHISO_DIR}/releng/airootfs/root/startup.sh
+run_in_chroot chmod +x /archiso/releng/airootfs/root/startup.sh
 
-# Step 6: Configure autostart
+# Create a systemd service for the startup script
+run_in_chroot bash -c "cat > /archiso/releng/airootfs/etc/systemd/system/startup.service << 'EOF'
+[Unit]
+Description=Custom Startup Script
+After=network.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/chmod +x /root/startup.sh
+ExecStart=/root/startup.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF"
+
+# Ensure the directory for the symlink exists
+limactl shell $LIMA_INSTANCE -- sudo mkdir -p ${VM_ARCHISO_DIR}/releng/airootfs/etc/systemd/system/multi-user.target.wants/
+
+# Create the symlink to enable the service
+limactl shell $LIMA_INSTANCE -- sudo ln -s ${VM_ARCHISO_DIR}/releng/airootfs/etc/systemd/system/startup.service ${VM_ARCHISO_DIR}/releng/airootfs/etc/systemd/system/multi-user.target.wants/startup.service
+
+# Configure autologin
 limactl shell $LIMA_INSTANCE -- mkdir -p ${VM_ARCHISO_DIR}/releng/airootfs/etc/systemd/system/getty@tty1.service.d
 run_in_chroot bash -c "cat > /archiso/releng/airootfs/etc/systemd/system/getty@tty1.service.d/autologin.conf << 'EOF'
 [Service]
 ExecStart=
 ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
-ExecStartPost=/usr/bin/bash /root/startup.sh
 EOF"
 
 # Build the custom Arch ISO
