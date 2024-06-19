@@ -36,7 +36,7 @@ pacman-key --init
 # Populate the Arch Linux keyring
 pacman-key --populate
 
-# Step 7: Populate mirrorlist
+# Populate mirrorlist
 cat <<EOF > /etc/pacman.d/mirrorlist
 Server = https://plug-mirror.rcac.purdue.edu/archlinux/\$repo/os/\$arch
 Server = https://mirror.csclub.uwaterloo.ca/archlinux/\$repo/os/\$arch
