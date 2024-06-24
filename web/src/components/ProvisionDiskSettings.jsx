@@ -11,10 +11,19 @@ const supportedLocales = [
 ];
 
 const supportedFilesystems = [
+  'ext3',
   'ext4',
+  'fat',
+  'exfat',
+  'f2fs',
+  'hfsplus',
+  'jfs',
+  'nilfs2',
+  'ntfs',
+  'reiserfs',
+  'udf',
   'xfs',
   'btrfs',
-  'zfs'
 ];
 
 const ProvisionDiskSettings = () => {
@@ -33,28 +42,6 @@ const ProvisionDiskSettings = () => {
               name="iso_path"
               value={options.iso_path}
               onChange={handleChange}
-              fullWidth
-              required
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField
-              label="CPU Count"
-              name="cpu_count"
-              value={options.cpu_count}
-              onChange={handleChange}
-              type="number"
-              fullWidth
-              required
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField
-              label="RAM Size (MB)"
-              name="ram_size"
-              value={options.ram_size}
-              onChange={handleChange}
-              type="number"
               fullWidth
               required
             />
