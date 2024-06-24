@@ -10,6 +10,13 @@ const supportedLocales = [
   'zh_CN.UTF-8'
 ];
 
+const supportedFilesystems = [
+  'ext4',
+  'xfs',
+  'btrfs',
+  'zfs'
+];
+
 const ProvisionDiskSettings = () => {
   const { options, handleChange } = useContext(ProvisionContext);
 
@@ -169,13 +176,20 @@ const ProvisionDiskSettings = () => {
           </Grid>
           <Grid item xs={12}>
             <TextField
+              select
               label="Root Filesystem"
               name="root_filesystem"
               value={options.root_filesystem}
               onChange={handleChange}
               fullWidth
               required
-            />
+            >
+              {supportedFilesystems.map((fs) => (
+                <MenuItem key={fs} value={fs}>
+                  {fs}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
         </Grid>
       </form>
