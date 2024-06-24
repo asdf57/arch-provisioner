@@ -45,6 +45,11 @@ const BuildISO = () => {
   return (
     <Container maxWidth="md">
         <Box my={4}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Build ISO
+        </Typography>
+      </Box>
+        <Box my={4}>
             <Typography variant="h5" component="h2" gutterBottom>
               Checkpoint Process Simulation
             </Typography>
