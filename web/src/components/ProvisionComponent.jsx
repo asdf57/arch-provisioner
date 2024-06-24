@@ -66,7 +66,7 @@ const ProvisionComponent = () => {
     <Container maxWidth="md">
       <Box my={4}>
         <Typography variant="h4" component="h1" gutterBottom>
-          Ansible Variables Form
+          Provision Machine(s)
         </Typography>
       </Box>
       <Grid container spacing={4}>
