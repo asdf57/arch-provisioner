@@ -4,7 +4,7 @@ import ProvisionDiskSettings from './ProvisionDiskSettings';
 import ProvisionPackageSettings from './ProvisionPackageSettings';
 import { ProvisionContext } from '../contexts/ProvisionContext';
 import io from 'socket.io-client';
-import { Box, Typography, Button, Grid, Paper } from '@mui/material';
+import { Box, Typography, Button, Grid, Paper, Container } from '@mui/material';
 
 const ProvisionComponent = () => {
   const { options } = useContext(ProvisionContext);
@@ -63,7 +63,7 @@ const ProvisionComponent = () => {
   };
 
   return (
-    <>
+    <Container maxWidth="md">
       <Box my={4}>
         <Typography variant="h4" component="h1" gutterBottom>
           Ansible Variables Form
@@ -95,7 +95,7 @@ const ProvisionComponent = () => {
           </pre>
         </Paper>
       </Box>
-    </>
+    </Container>
   );
 };
 
