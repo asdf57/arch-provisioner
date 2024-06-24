@@ -36,6 +36,26 @@ const ProvisionDiskSettings = () => {
       </Typography>
       <form>
         <Grid container spacing={3}>
+        <Grid item xs={12}>
+            <TextField
+              label="Ansible Port"
+              name="ansible_port"
+              value={options.ansible_port}
+              onChange={handleChange}
+              fullWidth
+              required
+            />
+          </Grid>
+        <Grid item xs={12}>
+            <TextField
+              label="Playbook Path"
+              name="playbook_path"
+              value={options.playbook}
+              onChange={handleChange}
+              fullWidth
+              required
+            />
+          </Grid>
           <Grid item xs={12}>
             <TextField
               label="ISO Path"
