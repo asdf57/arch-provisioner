@@ -54,6 +54,9 @@ const ProvisionComponent = () => {
       const data = await response.json();
       console.log('Response:', data);
 
+      const provisionText = `Provisioning machine with the following settings: ${JSON.stringify(options)}`;
+      setOutput((prevOutput) => [...prevOutput, provisionText]);
+
       if (data.client_id) {
         setClientId(data.client_id);
       }
