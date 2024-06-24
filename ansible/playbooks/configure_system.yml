@@ -1,0 +1,161 @@
+- name: Configure the system
+  hosts: all
+  become: yes
+  vars:
+    root_password: ""
+    locale: ""
+    hostname: ""
+    username: ""
+    password: ""
+  pre_tasks:
+    - name: Ensure variables are defined by user
+      assert:
+        that:
+          - root_password != ""
+          - locale != ""
+          - hostname != ""
+          - username != ""
+          - password != ""
+        fail_msg: "Please define all variables before running the playbook"
+        success_msg: "All variables are defined"
+  tasks:
+    - name: Install the base system
+      command: pacstrap /mnt base linux linux-firmware
+
+    - name: Generate the fstab file
+      command: genfstab -U /mnt >> /mnt/etc/fstab
+
+    - name: Chroot into the new system and set up
+      block:
+        - name: Initialize pacman keyring
+          command: arch-chroot /mnt pacman-key --init
+
+        - name: Populate the pacman keyring
+          command: arch-chroot /mnt pacman-key --populate
+
+        - name: Install reflector
+          command: arch-chroot /mnt pacman -S --noconfirm reflector
+
+        - name: Update the mirror list
+          command: arch-chroot /mnt reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
+
+        - name: Set the time zone
+          command: arch-chroot /mnt ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
+
+        - name: Set the hardware clock
+          command: arch-chroot /mnt hwclock --systohc
+
+        - name: Set locale.gen
+          lineinfile:
+            path: /mnt/etc/locale.gen
+            regexp: '^#{{ locale }} UTF-8'
+            line: '{{ locale }} UTF-8'
+
+        - name: Generate locale
+          command: arch-chroot /mnt locale-gen
+
+        - name: Create the locale.conf file
+          command: arch-chroot /mnt touch /etc/locale.conf
+
+        - name: Set LANG variable
+          lineinfile:
+            path: /mnt/etc/locale.conf
+            line: 'LANG={{ locale }}'
+
+        - name: Create hostname file
+          command: arch-chroot /mnt touch /etc/hostname
+
+        - name: Set hostname
+          lineinfile:
+            path: /mnt/etc/hostname
+            line: '{{ hostname }}'
+
+        - name: Add hosts to /etc/hosts
+          blockinfile:
+            path: /mnt/etc/hosts
+            block: |
+              127.0.0.1   localhost
+              ::1         localhost
+              127.0.1.1   {{ hostname }}.localdomain {{ hostname }}
+
+        - name: Set up users
+          block:
+            - name: Set root password
+              command: arch-chroot /mnt bash -c "echo 'root:{{ root_password }}' | chpasswd"
+
+            - name: Create a new user
+              block:
+                - name: Create the new user
+                  command: arch-chroot /mnt useradd -m -G wheel,audio,video,optical,storage -s /bin/bash {{ username }}
+                - name: Set the new user's password
+                  command: arch-chroot /mnt bash -c "echo '{{ username }}:{{ password }}' | chpasswd"
+
+        - name: Install sudo
+          block:
+            - name: Install sudo package
+              command: arch-chroot /mnt pacman -S --noconfirm sudo
+
+            - name: Add wheel group to sudoers
+              lineinfile:
+                path: /mnt/etc/sudoers
+                regexp: '^# %wheel ALL=(ALL) ALL'
+                line: '%wheel ALL=(ALL) ALL'
+                state: present
+
+        - name: Install and configure the bootloader
+          block:
+            - name: Install GRUB and EFI boot manager packages
+              command: arch-chroot /mnt pacman -S --noconfirm grub efibootmgr dosfstools os-prober mtools
+
+            - name: Make the EFI directory
+              command: arch-chroot /mnt mkdir -p /boot/efi
+
+            - name: Mount EFI partition
+              command: mount {{ disk_device }}1 /mnt/boot/efi
+
+            - name: Install GRUB bootloader
+              command: arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=grub_uefi --recheck
+
+            - name: Generate GRUB configuration
+              command: arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+
+        - name: Install additional packages
+          command: arch-chroot /mnt pacman -S --noconfirm networkmanager lynis ssh-audit vim neovim git helix firefox wayland xorg-server hyprland plasma-meta kde-applications mesa mesa-vdpau libva-mesa-driver vulkan-radeon virglrenderer amd-ucode
+
+        - name: Enable services
+          block:
+            - name: Enable NetworkManager
+              command: arch-chroot /mnt systemctl enable NetworkManager
+
+            - name: Enable SDDM
+              command: arch-chroot /mnt systemctl enable sddm
+
+        - name: Run security audit
+          block:
+            - name: Run Lynis security audit
+              command: lynis audit system
+              register: lynis_output
+              failed_when: "'Warning' in lynis_output.stdout or 'Vulnerable' in lynis_output.stdout"
+              ignore_errors: yes
+
+            - name: Run SSH audit
+              command: ssh-audit localhost
+              register: ssh_audit_output
+              failed_when: "'is not recommended' in ssh_audit_output.stdout or 'is vulnerable' in ssh_audit_output.stdout"
+              ignore_errors: yes
+
+        - name: Check audit results
+          block:
+            - name: Fail if Lynis found vulnerabilities
+              fail:
+                msg: "Lynis found security issues. Please review the audit report."
+              when: "'Warning' in lynis_output.stdout or 'Vulnerable' in lynis_output.stdout"
+
+            - name: Fail if SSH audit found vulnerabilities
+              fail:
+                msg: "SSH audit found security issues. Please review the SSH audit report."
+              when: "'is not recommended' in ssh_audit_output.stdout or 'is vulnerable' in ssh_audit_output.stdout"
+
+        # - name: Reboot the system
+        #   command: reboot
+        #   ignore_errors: yes
