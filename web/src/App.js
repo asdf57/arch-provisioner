@@ -5,6 +5,7 @@ import { ProvisionContextProvider } from './contexts/ProvisionContext';
 import Sidebar from './components/Sidebar';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import BuildISO from './components/BuildISO';
+import AuditComponent from './components/AuditComponent';
 
 const App = () => {
   return (
@@ -14,6 +15,7 @@ const App = () => {
         <Routes>
           <Route path="/buildiso" element={<BuildISO />} />
           <Route path="/provision" element={<ProvisionComponent />} />
+          <Route path="/audit" element={<AuditComponent />} />
         </Routes>
 
       </ProvisionContextProvider>
