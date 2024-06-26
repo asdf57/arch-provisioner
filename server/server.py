@@ -1,18 +1,18 @@
 import os
+import uuid
+import subprocess
+import ssl
 import eventlet
 eventlet.monkey_patch()
 
-import uuid
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
-import subprocess
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Store client IDs and their respective Socket.IO session IDs
 clients = {}
 
 def gen_client_id():
@@ -22,10 +22,10 @@ def read_process_output(process, client_id):
     for line in iter(process.stdout.readline, b''):
         print(line.decode('utf-8'))
         socketio.emit('ansible_output', {'data': line.decode('utf-8')}, room=clients.get(client_id))
-
     process.stdout.close()
     process.wait()
     socketio.emit('ansible_output', {'data': f'Process exited with code {process.returncode}'}, room=clients.get(client_id))
+
 
 @app.route('/run-ansible', methods=['POST'])
 def run_ansible():
@@ -112,4 +112,4 @@ def handle_disconnect():
         print(f'Client disconnected: {client_id}')
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5001)
+    socketio.run(app, host='0.0.0.0', port=5001, keyfile="../cert/key.pem", certfile="../cert/cert.pem")
