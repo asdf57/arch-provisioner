@@ -15,7 +15,7 @@ const ProvisionComponent = () => {
   useEffect(() => {
     if (clientId) {
       console.log('Setting up socket with clientId:', clientId);
-      socket.current = io('http://localhost:5001', { query: { clientId } });
+      socket.current = io('https://localhost:5001', { query: { clientId }, secure: true, rejectUnauthorized: false });
 
       socket.current.on('connect', () => {
         console.log('Socket connected:', socket.current.id);
@@ -46,7 +46,7 @@ const ProvisionComponent = () => {
   const handleRunAnsible = async () => {
     try {
       console.log('Options sent:', options);
-      const response = await fetch('http://localhost:5001/run-ansible', {
+      const response = await fetch('https://localhost:5001/run-ansible', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options),
