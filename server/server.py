@@ -9,6 +9,8 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 
+from .schema import Config
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -29,19 +31,13 @@ def read_process_output(process, client_id):
 
 @app.route('/run-ansible', methods=['POST'])
 def run_ansible():
-    required_params = [
-        'playbook', 'inventory', 'ansible_host', 'ansible_port', 'ansible_user', 
-        'ansible_ssh_private_key_file', 'disk_device', 'boot_partition_min', 
-        'boot_partition_max', 'swap_partition_min', 'swap_partition_max', 
-        'root_partition_min', 'root_partition_max', 'root_filesystem', 
-        'root_password', 'locale', 'hostname', 'username', 'password'
-    ]
-
     data = request.json
 
-    for param in required_params:
-        if param not in data:
-            return jsonify({'error': f'Missing parameter: {param}'}), 400
+    try:
+        config = Config(**data)
+        print(config)
+    except Exception as e:
+        return jsonify({'error': f'Invalid request: {e}'}), 400
 
     playbook = data['playbook']
     inventory = data['inventory']
