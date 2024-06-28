@@ -11,6 +11,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import InstallDesktopIcon from '@mui/icons-material/InstallDesktop';
 import BuildIcon from '@mui/icons-material/Build';
+import PolicyIcon from '@mui/icons-material/Policy';
 import { useNavigate } from 'react-router-dom';
 
 export default function AnchorTemporaryDrawer() {
@@ -73,6 +74,28 @@ export default function AnchorTemporaryDrawer() {
               <InstallDesktopIcon />
             </ListItemIcon>
             <ListItemText primary={"Provision Machine(s)"} />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem key={"Audit Machine(s)"} disablePadding sx={{ display: 'block' }}>
+          <ListItemButton
+            onClick={() => navigate('/audit')}
+            sx={{
+              minHeight: 48,
+              justifyContent: 'initial',
+              px: 2.5,
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 0,
+                mr: 3,
+                justifyContent: 'center',
+              }}
+            >
+              <PolicyIcon />
+            </ListItemIcon>
+            <ListItemText primary={"Audit Machine(s)"} />
           </ListItemButton>
         </ListItem>
       </List>
