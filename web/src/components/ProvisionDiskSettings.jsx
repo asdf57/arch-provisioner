@@ -39,8 +39,8 @@ const ProvisionDiskSettings = () => {
         <Grid item xs={12}>
             <TextField
               label="Ansible Port"
-              name="ansible_port"
-              value={options.ansible_port}
+              name="ansible.port"
+              value={options.ansible.port}
               onChange={handleChange}
               fullWidth
               required
@@ -49,18 +49,8 @@ const ProvisionDiskSettings = () => {
         <Grid item xs={12}>
             <TextField
               label="Playbook Path"
-              name="playbook_path"
-              value={options.playbook}
-              onChange={handleChange}
-              fullWidth
-              required
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="ISO Path"
-              name="iso_path"
-              value={options.iso_path}
+              name="ansible.playbook"
+              value={options.ansible.playbook}
               onChange={handleChange}
               fullWidth
               required
@@ -104,8 +94,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={12}>
             <TextField
               label="Disk Size"
-              name="disk_size"
-              value={options.disk_size}
+              name="disk.size"
+              value={options.disk.size}
               onChange={handleChange}
               fullWidth
               required
@@ -114,8 +104,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={12}>
             <TextField
               label="Disk Device"
-              name="disk_device"
-              value={options.disk_device}
+              name="disk.device"
+              value={options.disk.device}
               onChange={handleChange}
               fullWidth
               required
@@ -124,8 +114,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Boot Partition Min"
-              name="boot_partition_min"
-              value={options.boot_partition_min}
+              name="disk.partitions[0].min"
+              value={options.disk.partitions[0].min}
               onChange={handleChange}
               fullWidth
               required
@@ -134,8 +124,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Boot Partition Max"
-              name="boot_partition_max"
-              value={options.boot_partition_max}
+              name="disk.partitions[0].max"
+              value={options.disk.partitions[0].max}
               onChange={handleChange}
               fullWidth
               required
@@ -144,8 +134,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Swap Partition Min"
-              name="swap_partition_min"
-              value={options.swap_partition_min}
+              name="disk.partitions[1].min"
+              value={options.disk.partitions[1].min}
               onChange={handleChange}
               fullWidth
               required
@@ -154,8 +144,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Swap Partition Max"
-              name="swap_partition_max"
-              value={options.swap_partition_max}
+              name="disk.partitions[1].max"
+              value={options.disk.partitions[1].max}
               onChange={handleChange}
               fullWidth
               required
@@ -164,8 +154,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Root Partition Min"
-              name="root_partition_min"
-              value={options.root_partition_min}
+              name="disk.partitions[2].min"
+              value={options.disk.partitions[2].min}
               onChange={handleChange}
               fullWidth
               required
@@ -174,8 +164,8 @@ const ProvisionDiskSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Root Partition Max"
-              name="root_partition_max"
-              value={options.root_partition_max}
+              name="disk.partitions[2].max"
+              value={options.disk.partitions[2].max}
               onChange={handleChange}
               fullWidth
               required
@@ -185,8 +175,8 @@ const ProvisionDiskSettings = () => {
             <TextField
               select
               label="Root Filesystem"
-              name="root_filesystem"
-              value={options.root_filesystem}
+              name="disk.partitions[2].fs"
+              value={options.disk.partitions[2].fs}
               onChange={handleChange}
               fullWidth
               required
