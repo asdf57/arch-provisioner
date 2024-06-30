@@ -1,37 +1,66 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
+import { set } from 'lodash';
 
 const ProvisionContext = createContext();
 
 export function ProvisionContextProvider({ children }) {
   const [options, setOptions] = useState({
-    ansible_port: 60022,
-    iso_path: 'out/archlinux-2024.06.19-x86_64.iso',
-    disk_size: '10G',
-    disk_device: '/dev/vda',
-    boot_partition_min: '1MiB',
-    boot_partition_max: '512MiB',
-    swap_partition_min: '512MiB',
-    swap_partition_max: '2.5GiB',
-    root_partition_min: '2.5GiB',
-    root_partition_max: '100%',
-    root_filesystem: 'ext4',
+    ansible: {
+      host: 'localhost',
+      port: 60022,
+      user: 'root',
+      inventory: ['localhost'],
+      private_key: '~/.ssh/arch_provisioning_key',
+      playbook: '../ansible/playbooks/main.yml',
+    },
+    disk: {
+      device: '/dev/vda',
+      size: '10GiB',
+      partitions: [
+        {
+          min: '1MiB',
+          max: '512MiB',
+          fs: 'ext4',
+          flags: ['boot', 'esp'],
+        },
+        {
+          min: '512MiB',
+          max: '2.5GiB',
+          fs: 'swap',
+        },
+        {
+          min: '2.5GiB',
+          max: '100%',
+          fs: 'ext4',
+        },
+      ],
+    },
     root_password: '',
-    locale: 'en_US.UTF-8',
     hostname: 'archhost',
-    username: 'archuser',
-    password: '',
-    playbook: '../ansible/playbooks/main.yml',
-    inventory: 'localhost,',
-    ansible_host: 'localhost',
-    ansible_user: 'root',
-    ansible_ssh_private_key_file: '~/.ssh/arch_provisioning_key',
+    locale: 'en_US.UTF-8',
+    users: [
+      {
+        username: 'archuser',
+        password: '',
+        groups: ['wheel', 'users'],
+        shell: '/bin/bash',
+      },
+    ],
+    packages: [
+      "git",
+    ],
   });
 
+  /**
+   * Takes in a key-value pair and updates the options state with the new value.
+   */
   const handleChange = (e) => {
-    setOptions((prevOptions) => ({
-      ...prevOptions,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+    setOptions((prevOptions) => {
+      const newOptions = { ...prevOptions };
+      set(newOptions, name, value);
+      return newOptions;
+    });
   };
 
   return (
