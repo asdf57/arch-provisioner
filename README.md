@@ -16,4 +16,9 @@ curl https://github.com/asdf57/arch-provisioner/blob/main/livesetup.sh | bash
 ```
 
 to prepare the live environment for Ansible provisioning.
- 
+
+# To-Do
+- [ ] Add support for provisioning multiple machines with varying IPs with different configuration options
+- [ ] Add server side schema validation
+- [ ] Refactor Ansible playbooks to run tasks if and only if the required input variables are provided
+
