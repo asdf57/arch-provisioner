@@ -15,8 +15,8 @@ const ProvisionUserSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Username"
-              name="username"
-              value={options.username}
+              name="users[0].username"
+              value={options.users[0].username}
               onChange={handleChange}
               fullWidth
               required
@@ -25,8 +25,8 @@ const ProvisionUserSettings = () => {
           <Grid item xs={6}>
             <TextField
               label="Password"
-              name="password"
-              value={options.password}
+              name="users[0].password"
+              value={options.users[0].password}
               onChange={handleChange}
               type="password"
               fullWidth
