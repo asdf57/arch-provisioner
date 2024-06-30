@@ -9,6 +9,7 @@ class Partition(BaseModel):
 
 class Disk(BaseModel):
     device: str
+    size: str
     partitions: List[Partition]
 
 class Ansible(BaseModel):
@@ -20,6 +21,7 @@ class Ansible(BaseModel):
     playbook: str
 
 class User(BaseModel):
+    username: str
     password: str
     groups: List[str]
     shell: str
@@ -30,5 +32,5 @@ class Config(BaseModel):
     root_password: str
     hostname: str
     locale: str
-    users: Optional[Dict[str, User]] = None
+    users: Optional[List[User]] = None
     packages: Optional[List[str]] = []
