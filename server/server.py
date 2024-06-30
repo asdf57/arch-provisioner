@@ -9,7 +9,7 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 
-from .schema import Config
+from schema import Config
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -39,25 +39,25 @@ def run_ansible():
     except Exception as e:
         return jsonify({'error': f'Invalid request: {e}'}), 400
 
-    playbook = data['playbook']
-    inventory = data['inventory']
-    ansible_host = data['ansible_host']
-    ansible_port = data['ansible_port']
-    ansible_user = data['ansible_user']
-    ansible_ssh_private_key_file = data['ansible_ssh_private_key_file']
-    disk_device = data['disk_device']
-    boot_partition_min = data['boot_partition_min']
-    boot_partition_max = data['boot_partition_max']
-    swap_partition_min = data['swap_partition_min']
-    swap_partition_max = data['swap_partition_max']
-    root_partition_min = data['root_partition_min']
-    root_partition_max = data['root_partition_max']
-    root_filesystem = data['root_filesystem']
-    root_password = data['root_password']
-    locale = data['locale']
-    hostname = data['hostname']
-    username = data['username']
-    password = data['password']
+    ansible_host = config.ansible.host
+    ansible_port = config.ansible.port
+    ansible_user = config.ansible.user
+    inventory = ",".join(config.ansible.inventory) + ","
+    ansible_ssh_private_key_file = config.ansible.private_key
+    playbook = config.ansible.playbook
+    disk_device = config.disk.device
+    boot_partition_min = config.disk.partitions[0].min
+    boot_partition_max = config.disk.partitions[0].max
+    swap_partition_min = config.disk.partitions[1].min
+    swap_partition_max = config.disk.partitions[1].max
+    root_partition_min = config.disk.partitions[2].min
+    root_partition_max = config.disk.partitions[2].max
+    root_filesystem = config.disk.partitions[2].fs
+    root_password = config.root_password
+    hostname = config.hostname
+    locale = config.locale
+    username = config.users[0].username
+    password = config.users[0].password
 
     client_id = gen_client_id()
 
