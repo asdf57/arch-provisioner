@@ -1,0 +1,49 @@
+{
+    "ansible:": {
+        "host": "localhost",
+        "port": 22,
+        "user": "root",
+        "inventory": [
+            "localhost"
+        ],
+        "private_key": "/root/.ssh/id_rsa",
+        "playbook": "playbook.yml"
+    },
+    "disk": {
+        "device": "/dev/sdb",
+        "size": "10G",
+        "partitions": [
+            {
+                "min": "1G",
+                "max": "5G",
+                "fs": "ext4",
+                "flags": ["boot", "esp"]
+            },
+            {
+                "min": "5G",
+                "max": "10G",
+                "fs": "ext4",
+                "flags": ["swap"]
+            },
+            {
+                "min": "10G",
+                "max": "15G",
+                "fs": "ext4"
+            }
+        ]
+    },
+    "root_password": "",
+    "hostname": "",
+    "locale": "en_US.UTF-8",
+    "users": {
+        "user1": {
+            "password": "",
+            "groups": ["wheel", "users"],
+            "shell": "/bin/bash"
+        }
+    },
+    "packages": [
+        "vim",
+        "git"
+    ]
+}
