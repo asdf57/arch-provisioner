@@ -12,7 +12,7 @@ from flask_cors import CORS
 from schema import Config
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(app) #supports_credentials=True
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 clients = {}
@@ -108,4 +108,6 @@ def handle_disconnect():
         print(f'Client disconnected: {client_id}')
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5001, keyfile="../cert/key.pem", certfile="../cert/cert.pem")
+    # socketio.run(app, host='0.0.0.0', port=5001, keyfile="../cert/key.pem", certfile="../cert/cert.pem")
+    socketio.run(app, host='0.0.0.0', port=5001)
+
