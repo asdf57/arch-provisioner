@@ -1,3 +1,5 @@
 out/
-*/**/venv
-*/**/*.pem
+**/venv/
+**/*.pem
+**/__pycache__/
+**/*.img
