@@ -13,7 +13,7 @@ def validate_size(value: str) -> str:
             raise ValueError('Percentage value must be between 0 and 100')
     except ValueError:
         raise ValueError(f'Invalid numeric value: {value}')
-    
+
     return value
 
 class Partition(BaseModel):
@@ -116,7 +116,22 @@ class RootPartition(Partition):
 class Disk(BaseModel):
     device: str
     size: str
-    partitions: List[Union[EFIPartition, SwapPartition, RootPartition]]
+    partitions: List[Partition]
+
+    @field_validator('partitions')
+    def check_partition_requirements(cls, partitions):
+        num_efi_partitions = len([p for p in partitions if isinstance(p, EFIPartition)])
+        num_swap_partitions = len([p for p in partitions if isinstance(p, SwapPartition)])
+        num_root_partitions = len([p for p in partitions if isinstance(p, RootPartition)])
+
+        if num_efi_partitions != 1:
+            raise ValueError("There must be exactly one EFI partition.")
+        if num_root_partitions < 1:
+            raise ValueError("There must be at least one root partition.")
+        if num_swap_partitions > 1:
+            raise ValueError("There can be at most one Swap partition.")
+
+        return partitions
 
 class Ansible(BaseModel):
     host: str
