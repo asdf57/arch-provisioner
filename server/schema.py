@@ -1,6 +1,6 @@
 import ipaddress
 import os
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from typing import List, Literal, Tuple, Union, Optional
 
 FLAGS = [
@@ -86,7 +86,6 @@ LOCALES = [
 ]
 
 def validate_size(value: str) -> str:
-    print(value)
     if not value.endswith(('%', 'MiB', 'GiB')):
         raise ValueError(f'{value} must end with MiB, GiB, or %')
 
@@ -102,18 +101,17 @@ def validate_size(value: str) -> str:
 
 class Partition(BaseModel):
     type: Literal['efi', 'swap', 'general']
-    align: str
-    flags: List[str]
-    fs: str
-    label: str
-    name: str
-    number: str
-    start: str
-    end: str
-    type: str
-    resize: str
-    state: str
-    unit: str
+    align: str = Field(default="optimal")
+    flags: List[str] = Field(default_factory=list)
+    fs: str = Field(...)
+    label: str = Field(...)
+    name: str = Field(...)
+    number: str = Field(...)
+    start: str = Field(...)
+    end: str = Field(...)
+    resize: str = Field(default="false")
+    state: str = Field(default="present")
+    unit: str = Field(...)
 
     """
     Partition rules:
@@ -126,6 +124,9 @@ class Partition(BaseModel):
             (1.3.1) Must exist
             (1.3.2) One or more ROOT partitions can exist.
     """
+
+    class ConfigDict:
+        populate_by_name = True
 
     @field_validator('type')
     def validate_partition_type(cls, v):
@@ -143,7 +144,6 @@ class Partition(BaseModel):
     def validate_partition_flags(cls, v):
         if not all(flag in FLAGS for flag in v):
             raise ValueError(f"Invalid flags: {v}")
-
         return v
 
     @field_validator('fs')
@@ -152,39 +152,10 @@ class Partition(BaseModel):
             raise ValueError(f"Invalid filesystem: {v}")
         return v
 
-    @field_validator('label')
-    def validate_partition_label(cls, v):
-        max_length = 16
-
-        # Check if label length is within the limit
-        if len(v) > max_length:
-            raise ValueError(f"Label length must be less than or equal to {max_length} characters. Given: {v}")
-
-        # Check if all characters in the label are valid
-        if not all(char.isalnum() or char in '._-' for char in v):
-            raise ValueError(f"Label must only contain alphanumeric characters, '.', '_', or '-'. Given: {v}")
-
-        return v
-
-    @field_validator('name')
-    def validate_partition_name(cls, v):
-        max_length = 32
-
-        # Check if name length is within the limit
-        if len(v) > max_length:
-            raise ValueError(f"Name length must be less than or equal to {max_length} characters. Given: {v}")
-
-        # Check if all characters in the name are valid
-        if not all(char.isalnum() or char in ' ._-' for char in v):
-            raise ValueError(f"Name must only contain alphanumeric characters, '.', '_', or '-'. Given: {v}")
-
-        return v
-
     @field_validator('number')
     def validate_partition_number(cls, v):
         if not v.isdigit():
             raise ValueError(f"Partition number must be a positive integer. Given: {v}")
-
         return v
 
     @field_validator('start', 'end')
@@ -195,21 +166,18 @@ class Partition(BaseModel):
     def validate_partition_resize(cls, v):
         if v not in ['true', 'false']:
             raise ValueError(f"Resize must be either 'true' or 'false'. Given: {v}")
-
         return v
 
     @field_validator('state')
     def validate_partition_state(cls, v):
         if v not in ['present', 'absent', 'info']:
             raise ValueError(f"State must be either 'present', 'absent', or 'info'. Given: {v}")
-
         return v
 
     @field_validator('unit')
     def validate_partition_unit(cls, v):
         if v not in ['MiB', 'GiB', '%']:
             raise ValueError(f"Invalid unit: {v}")
-
         return v
 
 class EFIPartition(Partition):
@@ -221,13 +189,10 @@ class EFIPartition(Partition):
         - unit
     """
     type: Literal['efi'] = 'efi'
-    align: str = "optimal"
-    fs: Literal['fat32'] = "fat32"
-    label: str = "gpt"
-    flags: List[str] = ['boot', 'esp']
-    name: str = "EFI System"
-    resize: str = "false"
-    state: str = "present"
+    fs: str = Field(default="fat32")
+    label: str = Field(default="gpt")
+    flags: List[str] = Field(default_factory=lambda: ['boot', 'esp'])
+    name: str = Field(default="EFI System")
 
     @field_validator('flags')
     def validate_flags(cls, v):
@@ -235,6 +200,12 @@ class EFIPartition(Partition):
         if not required_flags.issubset(v):
             raise ValueError(f"Flags must include both 'boot' and 'esp'. Given: {v}")
         return v
+    
+    @field_validator('fs')
+    def validate_fs(cls, v):
+        if v != 'fat32':
+            raise ValueError("EFI partition must have filesystem 'fat32'.")
+        return
 
 class SwapPartition(Partition):
     """
@@ -245,19 +216,21 @@ class SwapPartition(Partition):
         - unit
     """
     type: Literal['swap'] = 'swap'
-    align: str = "optimal"
-    fs: Literal['linux-swap'] = "linux-swap"
-    label: str = "swap"
-    flags: List[str] = ['swap']
-    name: str = "Swap"
-    resize: str = "false"
-    state: str = "present"
+    fs: str = Field(default="linux-swap")
+    label: str = Field(default="swap")
+    flags: List[str] = Field(default_factory=lambda: ['swap'])
+    name: str = Field(default="Swap")
+
+    @field_validator('fs')
+    def validate_fs(cls, v):
+        if v != 'linux-swap':
+            raise ValueError("Swap partition must have filesystem 'linux-swap'.")
+        return
 
     @field_validator('flags')
     def validate_flags(cls, v):
-        required_flags = {"swap"}
-        if not required_flags.issubset(v):
-            raise ValueError(f"Flags must include 'swap'. Given: {v}")
+        if "swap" not in v:
+            raise ValueError("Flags must include 'swap'.")
         return v
 
 class RootPartition(Partition):
@@ -270,61 +243,54 @@ class RootPartition(Partition):
         - fs
     """
     type: Literal['general'] = 'general'
-    align: str = "optimal"
-    label: str = "root"
-    flags: List[str] = []
-    name: str = "Root Partition"
-    resize: str = "false"
-    state: str = "present"    
+    fs: str = Field(...)
+    label: str = Field(default="root")
+    flags: List[str] = Field(default_factory=list)
+    name: str = Field(default="Root Partition")
+
+def partition_factory(data: Union[dict, Partition]) -> Partition:
+    if isinstance(data, EFIPartition) or isinstance(data, SwapPartition) or isinstance(data, RootPartition):
+        return data
+
+    if isinstance(data, Partition):
+        partition_type = data.type
+    else:
+        partition_type = data.get('type')
+
+    if partition_type == 'efi':
+        return EFIPartition(**data.model_dump() if isinstance(data, Partition) else data)
+    elif partition_type == 'swap':
+        return SwapPartition(**data.model_dump() if isinstance(data, Partition) else data)
+    elif partition_type == 'general':
+        return RootPartition(**data.model_dump() if isinstance(data, Partition) else data)
+    else:
+        raise ValueError(f"Unsupported partition type: {partition_type}")
 
 class Disk(BaseModel):
     device: str
     size: str
-    partitions: List[Partition]
+    partitions: List[Partition] = Field(..., default_factory=list)
 
     @field_validator('device')
     def validate_device(cls, v):
         if not v.startswith('/dev/'):
             raise ValueError(f"Device must start with '/dev/'. Given: {v}")
-
         return v
 
     @field_validator('size')
     def validate_size(cls, v):
         return validate_size(v)
 
-    @field_validator('partitions')
-    def check_partition_requirements(cls, partitions):
-        total_partitions = []
+    @field_validator('partitions', mode='before')
+    def transform_partitions(cls, partitions):
+        transformed_partitions = [partition_factory(partition) for partition in partitions]
 
-        """
-        Partition types can be created in two separate ways:
-        (1) As a Partition object
-        (2) As the explicit partition object (EFIPartition, SwapPartition, RootPartition)
+        num_efi_partitions = sum(isinstance(p, EFIPartition) for p in transformed_partitions)
+        num_swap_partitions = sum(isinstance(p, SwapPartition) for p in transformed_partitions)
+        num_root_partitions = sum(isinstance(p, RootPartition) for p in transformed_partitions)
 
-        This function therefore needs to be able to validate both types of partition objects
-        when defining either the 'efi' or 'swap' partition types. To do this, we'll loop through
-        each partition and if we detect any general Partition objects with type 'efi' or 'swap',
-        we'll attempt to convert them to their respective explicit partition objects.
-        """
+        print(f"EFI: {num_efi_partitions}, Swap: {num_swap_partitions}, Root: {num_root_partitions}, partitions: {partitions}\n\ntransformed: {transformed_partitions}")
 
-        # Convert any Partition objects with type 'efi' or 'swap' to their respective explicit partition objects
-        for partition in partitions:
-            if partition.type == 'efi' and not isinstance(partition, EFIPartition):
-                total_partitions.append(EFIPartition(**partition.model_dump()))
-            elif partition.type == 'swap' and not isinstance(partition, SwapPartition):
-                total_partitions.append(SwapPartition(**partition.model_dump()))
-            elif partition.type == 'general' and not isinstance(partition, RootPartition):
-                total_partitions.append(RootPartition(**partition.model_dump()))
-            else:
-                total_partitions.append(partition)
-
-        # Calculate the number of EFI, Swap, and General partitions
-        num_efi_partitions = len([p for p in total_partitions if isinstance(p, EFIPartition)])
-        num_swap_partitions = len([p for p in total_partitions if isinstance(p, SwapPartition)])
-        num_root_partitions = len([p for p in total_partitions if isinstance(p, RootPartition)])
-
-        # Verify that the partition count requirements are met
         if num_efi_partitions != 1:
             raise ValueError("There must be exactly one EFI partition.")
         if num_root_partitions < 1:
@@ -332,7 +298,7 @@ class Disk(BaseModel):
         if num_swap_partitions > 1:
             raise ValueError("There can be at most one Swap partition.")
 
-        return partitions
+        return transformed_partitions
 
 class Ansible(BaseModel):
     host: str
