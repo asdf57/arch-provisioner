@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ValidationError, field_validator
-from typing import Dict, List, Literal, Tuple, Union, Optional
+from pydantic import BaseModel, field_validator
+from typing import List, Literal, Tuple, Union, Optional
 
 def validate_size(value: str) -> str:
     print(value)
@@ -42,6 +42,12 @@ class Partition(BaseModel):
             (1.3.1) Must exist
             (1.3.2) One or more ROOT partitions can exist.
     """
+
+    @field_validator('type')
+    def validate_partition_type(cls, v):
+        if v not in ['efi', 'swap', 'general']:
+            raise ValueError(f"Invalid partition type: {v}")
+        return v
 
     @field_validator('start', 'end')
     @classmethod
@@ -120,10 +126,36 @@ class Disk(BaseModel):
 
     @field_validator('partitions')
     def check_partition_requirements(cls, partitions):
-        num_efi_partitions = len([p for p in partitions if isinstance(p, EFIPartition)])
-        num_swap_partitions = len([p for p in partitions if isinstance(p, SwapPartition)])
-        num_root_partitions = len([p for p in partitions if isinstance(p, RootPartition)])
+        total_partitions = []
 
+        """
+        Partition types can be created in two separate ways:
+        (1) As a Partition object
+        (2) As the explicit partition object (EFIPartition, SwapPartition, RootPartition)
+
+        This function therefore needs to be able to validate both types of partition objects
+        when defining either the 'efi' or 'swap' partition types. To do this, we'll loop through
+        each partition and if we detect any general Partition objects with type 'efi' or 'swap',
+        we'll attempt to convert them to their respective explicit partition objects.
+        """
+
+        # Convert any Partition objects with type 'efi' or 'swap' to their respective explicit partition objects
+        for partition in partitions:
+            if partition.type == 'efi' and not isinstance(partition, EFIPartition):
+                total_partitions.append(EFIPartition(**partition.model_dump()))
+            elif partition.type == 'swap' and not isinstance(partition, SwapPartition):
+                total_partitions.append(SwapPartition(**partition.model_dump()))
+            elif partition.type == 'general' and not isinstance(partition, RootPartition):
+                total_partitions.append(RootPartition(**partition.model_dump()))
+            else:
+                total_partitions.append(partition)
+
+        # Calculate the number of EFI, Swap, and General partitions
+        num_efi_partitions = len([p for p in total_partitions if isinstance(p, EFIPartition)])
+        num_swap_partitions = len([p for p in total_partitions if isinstance(p, SwapPartition)])
+        num_root_partitions = len([p for p in total_partitions if isinstance(p, RootPartition)])
+
+        # Verify that the partition count requirements are met
         if num_efi_partitions != 1:
             raise ValueError("There must be exactly one EFI partition.")
         if num_root_partitions < 1:
