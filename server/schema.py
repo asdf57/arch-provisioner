@@ -40,7 +40,50 @@ FILE_SYSTEMS = [
     "udf",
     "xfs"
 ]
-
+LOCALES = [
+    "en_US.UTF-8",
+    "en_GB.UTF-8",
+    "en_CA.UTF-8",
+    "fr_FR.UTF-8",
+    "fr_CA.UTF-8",
+    "de_DE.UTF-8",
+    "es_ES.UTF-8",
+    "it_IT.UTF-8",
+    "pt_BR.UTF-8",
+    "pt_PT.UTF-8",
+    "ru_RU.UTF-8",
+    "zh_CN.UTF-8",
+    "zh_TW.UTF-8",
+    "ja_JP.UTF-8",
+    "ko_KR.UTF-8",
+    "nl_NL.UTF-8",
+    "sv_SE.UTF-8",
+    "da_DK.UTF-8",
+    "fi_FI.UTF-8",
+    "no_NO.UTF-8",
+    "pl_PL.UTF-8",
+    "cs_CZ.UTF-8",
+    "hu_HU.UTF-8",
+    "sk_SK.UTF-8",
+    "el_GR.UTF-8",
+    "tr_TR.UTF-8",
+    "he_IL.UTF-8",
+    "ar_SA.UTF-8",
+    "hi_IN.UTF-8",
+    "th_TH.UTF-8",
+    "id_ID.UTF-8",
+    "vi_VN.UTF-8",
+    "ms_MY.UTF-8",
+    "uk_UA.UTF-8",
+    "ro_RO.UTF-8",
+    "bg_BG.UTF-8",
+    "hr_HR.UTF-8",
+    "sr_RS.UTF-8",
+    "sl_SI.UTF-8",
+    "lt_LT.UTF-8",
+    "lv_LV.UTF-8",
+    "et_EE.UTF-8",
+]
 
 def validate_size(value: str) -> str:
     print(value)
@@ -375,3 +418,35 @@ class Config(BaseModel):
     locale: str
     users: Optional[List[User]] = None
     packages: List[str] = []
+
+    @field_validator('root_password')
+    def validate_root_password(cls, v):
+        if not v:
+            raise ValueError("Root password cannot be empty")
+        return v
+
+    @field_validator('hostname')
+    def validate_hostname(cls, v):
+        if not v.isalnum() and "-" not in v:
+            raise ValueError("Hostname must be alphanumeric and can include hyphens")
+        if len(v) > 63:
+            raise ValueError("Hostname cannot exceed 63 characters")
+        return v
+
+    @field_validator('locale')
+    def validate_locale(cls, v):
+        if v not in LOCALES:
+            raise ValueError("Invalid locale format. Expected format is 'en_US.UTF-8'")
+        return v
+
+    @field_validator('users')
+    def validate_users(cls, v):
+        if v is None or len(v) == 0:
+            raise ValueError("Users list cannot be empty")
+        return v
+
+    @field_validator('packages')
+    def validate_packages(cls, v):
+        if any(not pkg for pkg in v):
+            raise ValueError("Package names cannot be empty")
+        return v
