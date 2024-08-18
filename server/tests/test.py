@@ -282,3 +282,73 @@ def test_changing_required_value_in_swap_partition_raises_validation_error():
 
     # File system must be linux-swap for swap partition, not 'invalid'
     assert "fs\n  Input should be 'linux-swap'" in str(e.value)
+
+def test_excluding_root_partition_raises_validation_error():
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
+                SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB"),
+            ]
+        )
+
+    assert "1 validation error for Disk" in str(e.value)
+    assert "There must be at least one root partition" in str(e.value)
+
+def test_excluding_efi_partition_raises_validation_error():
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                SwapPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
+                RootPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", fs="ext4"),
+            ]
+        )
+
+    assert "1 validation error for Disk" in str(e.value)
+    assert "There must be exactly one EFI partition" in str(e.value)
+
+def test_excluding_swap_partition_is_successful():
+    disk = Disk(
+        device="/dev/sda",
+        size="500GiB",
+        partitions=[
+            EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
+            RootPartition(start="513MiB", end="500GiB", number="2", unit="GiB", fs="ext4"),
+        ]
+    )
+
+    assert len(disk.partitions) == 2
+
+def test_multiple_efi_partitions_raises_validation_error():
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
+                SwapPartition(start="1025MiB", end="1536MiB", number="3", unit="MiB"),
+                EFIPartition(start="513MiB", end="1024MiB", number="2", unit="MiB"),
+                RootPartition(start="1537MiB", end="500GiB", number="4", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "There must be exactly one EFI partition" in str(e.value)
+
+def test_multiple_swap_partitions_raises_validation_error():
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
+                SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB"),
+                SwapPartition(start="1025MiB", end="1536MiB", number="3", unit="MiB"),
+                RootPartition(start="1537MiB", end="500GiB", number="4", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "There can be at most one Swap partition" in str(e.value)
