@@ -58,7 +58,7 @@ class EFIPartition(Partition):
     """
     type: Literal['efi'] = 'efi'
     align: str = "optimal"
-    fs: str = "fat32"
+    fs: Literal['fat32'] = "fat32"
     label: str = "gpt"
     flags: List[str] = ['boot', 'esp']
     name: str = "EFI System"
@@ -82,7 +82,7 @@ class SwapPartition(Partition):
     """
     type: Literal['swap'] = 'swap'
     align: str = "optimal"
-    fs: str = "linux-swap"
+    fs: Literal['linux-swap'] = "linux-swap"
     label: str = "swap"
     flags: List[str] = ['swap']
     name: str = "Swap"
