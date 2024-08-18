@@ -1,11 +1,11 @@
-from pydantic import BaseModel, field_validator
-from typing import List, Optional
+from pydantic import BaseModel, ValidationError, field_validator
+from typing import Dict, List, Literal, Tuple, Union, Optional
 
 def validate_size(value: str) -> str:
     print(value)
     if not value.endswith(('%', 'MiB', 'GiB')):
         raise ValueError(f'{value} must end with MiB, GiB, or %')
-    
+
     numeric_part = value[:-1] if value.endswith('%') else value[:-3]
     try:
         size = float(numeric_part)
@@ -17,30 +17,106 @@ def validate_size(value: str) -> str:
     return value
 
 class Partition(BaseModel):
-    min: str
-    max: str
+    type: Literal['efi', 'swap', 'general']
+    align: str
+    flags: List[str]
     fs: str
-    flags: List[str] = []
+    label: str
+    name: str
+    number: str
+    start: str
+    end: str
+    type: str
+    resize: str
+    state: str
+    unit: str
 
-    @field_validator('min', 'max')
+    """
+    Partition rules:
+    (1) Requires the unordered sequence: EFI, [SWAP], ROOT+
+        (1.1) EFI partition
+            (1.1.1) Must exist
+        (1.2) SWAP partition
+            (1.2.1) Optional
+        (1.3) ROOT partition
+            (1.3.1) Must exist
+            (1.3.2) One or more ROOT partitions can exist.
+    """
+
+    @field_validator('start', 'end')
     @classmethod
     def validate_partition_size(cls, v):
         return validate_size(v)
 
+class EFIPartition(Partition):
+    """
+    Attributes that the USER must provide (not implemented defaults):
+        - start
+        - end
+        - number
+        - unit
+    """
+    type: Literal['efi'] = 'efi'
+    align: str = "optimal"
+    fs: str = "fat32"
+    label: str = "gpt"
+    flags: List[str] = ['boot', 'esp']
+    name: str = "EFI System"
+    resize: str = "false"
+    state: str = "present"
+
+    @field_validator('flags')
+    def validate_flags(cls, v):
+        required_flags = {"boot", "esp"}
+        if not required_flags.issubset(v):
+            raise ValueError(f"Flags must include both 'boot' and 'esp'. Given: {v}")
+        return v
+
+class SwapPartition(Partition):
+    """
+    Attributes that the USER must provide (not implemented defaults):
+        - start
+        - end
+        - number
+        - unit
+    """
+    type: Literal['swap'] = 'swap'
+    align: str = "optimal"
+    fs: str = "linux-swap"
+    label: str = "swap"
+    flags: List[str] = ['swap']
+    name: str = "Swap"
+    resize: str = "false"
+    state: str = "present"
+
+    @field_validator('flags')
+    def validate_flags(cls, v):
+        required_flags = {"swap"}
+        if not required_flags.issubset(v):
+            raise ValueError(f"Flags must include 'swap'. Given: {v}")
+        return v
+
+class RootPartition(Partition):
+    """
+    Attributes that the USER must provide (not implemented defaults):
+        - start
+        - end
+        - number
+        - unit
+        - fs
+    """
+    type: Literal['general'] = 'general'
+    align: str = "optimal"
+    label: str = "root"
+    flags: List[str] = []
+    name: str = "Root Partition"
+    resize: str = "false"
+    state: str = "present"    
+
 class Disk(BaseModel):
     device: str
     size: str
-    partitions: List[Partition]
-
-    @field_validator('partitions')
-    @classmethod
-    def validate_partitions(cls, partitions):
-        for i in range(1, len(partitions)):
-            prev_max = float(partitions[i-1].max[:-3] if partitions[i-1].max.endswith(('MiB', 'GiB')) else partitions[i-1].max[:-1])
-            curr_min = float(partitions[i].min[:-3] if partitions[i].min.endswith(('MiB', 'GiB')) else partitions[i].min[:-1])
-            if curr_min < prev_max:
-                raise ValueError(f'Partition {i} min value must be equal to or greater than the previous partition max value')
-        return partitions
+    partitions: List[Union[EFIPartition, SwapPartition, RootPartition]]
 
 class Ansible(BaseModel):
     host: str
