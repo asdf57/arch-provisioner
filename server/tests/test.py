@@ -17,16 +17,26 @@ TEST_SCHEMA_1 = {
         "size": "500GiB",
         "partitions": [
             {
-                "min": "100GiB",
-                "max": "200GiB"
+                "type": "efi",
+                "start": "100GiB",
+                "end": "200GiB",
+                "number": "1",
+                "unit": "GiB",
             },
             {
-                "min": "200GiB",
-                "max": "300GiB"
+                "type": "swap",
+                "start": "200GiB",
+                "end": "300GiB",
+                "number": "2",
+                "unit": "GiB",
             },
             {
-                "min": "300GiB",
-                "max": "400GiB"
+                "type": "general",
+                "start": "300GiB",
+                "end": "400GiB",
+                "number": "3",
+                "unit": "GiB",
+                "fs": "ext4",
             }
         ]
     },
@@ -50,6 +60,157 @@ TEST_SCHEMA_1 = {
     "packages": ["vim", "git", "python3"]
 }
 
+TEST_SCHEMA_2 = {
+    "ansible": {
+        "host": "192.168.1.1",
+        "port": 22,
+        "user": "admin",
+        "inventory": ["192.168.1.49"],
+        "private_key": "/path/to/private/key",
+        "playbook": "/path/to/playbook.yml"
+    },
+    "disk": {
+        "device": "/dev/sda",
+        "size": "500GiB",
+        "partitions": [
+            {
+                "type": "efi",
+                "start": "100GiB",
+                "end": "200GiB",
+                "number": "1",
+                "unit": "GiB",
+                "fs": "ext4",
+            },
+            {
+                "type": "swap",
+                "start": "200GiB",
+                "end": "300GiB",
+                "number": "2",
+                "unit": "GiB",
+            },
+            {
+                "type": "general",
+                "start": "300GiB",
+                "end": "400GiB",
+                "number": "3",
+                "unit": "GiB",
+                "fs": "ext4",
+            }
+        ]
+    },
+    "root_password": "password",
+    "hostname": "my-server",
+    "locale": "en_US.UTF-8",
+    "users": [
+        {
+            "username": "user1",
+            "password": "password1",
+            "groups": ["sudo", "users"],
+            "shell": "/bin/bash"
+        },
+        {
+            "username": "user2",
+            "password": "password2",
+            "groups": ["users"],
+            "shell": "/bin/bash"
+        }
+    ],
+    "packages": ["vim", "git", "python3"]
+}
+"""
+type: Literal['efi', 'swap', 'general']
+    align: str = Field(default="optimal")
+    flags: List[str] = Field(default_factory=list)
+    fs: str = Field(...)
+    label: str = Field(...)
+    name: str = Field(...)
+    number: str = Field(...)
+    start: str = Field(...)
+    end: str = Field(...)
+    resize: str = Field(default="false")
+    state: str = Field(default="present")
+    unit: str = Field(...)
+    """
+
+
+TEST_SCHEMA_3 = {
+    "ansible": {
+        "host": "192.168.1.1",
+        "port": 22,
+        "user": "admin",
+        "inventory": ["192.168.1.49"],
+        "private_key": "/path/to/private/key",
+        "playbook": "/path/to/playbook.yml"
+    },
+    "disk": {
+        "device": "/dev/sda",
+        "size": "500GiB",
+        "partitions": [
+            {
+                "type": "efi",
+                "align": "optimal",
+                "flags": ["boot", "esp"],
+                "fs": "fat32",
+                "label": "gpt",
+                "name": "EFI System",
+                "number": "1",
+                "start": "1MiB",
+                "end": "512MiB",
+                "resize": "false",
+                "state": "present",
+                "unit": "MiB",
+            },
+            {
+                "type": "swap",
+                "align": "optimal",
+                "flags": ["swap"],
+                "fs": "linux-swap",
+                "label": "swap",
+                "name": "Swap",
+                "number": "2",
+                "start": "513MiB",
+                "end": "1024MiB",
+                "resize": "false",
+                "state": "present",
+                "unit": "MiB",
+            },
+            {
+                "type": "general",
+                "align": "optimal",
+                "flags": [],
+                "fs": "ext4",
+                "label": "root",
+                "name": "Root Partition",
+                "number": "3",
+                "start": "1025MiB",
+                "end": "500GiB",
+                "resize": "false",
+                "state": "present",
+                "unit": "GiB",
+            }
+        ]
+    },
+    "root_password": "password",
+    "hostname": "my-server",
+    "locale": "en_US.UTF-8",
+    "users": [
+        {
+            "username": "user1",
+            "password": "password1",
+            "groups": ["sudo", "users"],
+            "shell": "/bin/bash"
+        },
+        {
+            "username": "user2",
+            "password": "password2",
+            "groups": ["users"],
+            "shell": "/bin/bash"
+        }
+    ],
+    "packages": ["vim", "git", "python3"]
+}
+
+
 def test_validate_size_with_valid_and_invalid_inputs():
     assert validate_size('50%') == '50%'
     assert validate_size('100MiB') == '100MiB'
@@ -64,6 +225,93 @@ def test_validate_size_with_valid_and_invalid_inputs():
         validate_size('101%')
     with pytest.raises(ValueError):
         validate_size('abc')
+
+def test_efi_partition_validation():
+    # Invalid filesystem
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="2049MiB", end="400GiB", number="1", unit="GiB", fs="ext4"),
+                SwapPartition(start="2049MiB", end="400GiB", number="2", unit="GiB"),
+                RootPartition(start="2049MiB", end="400GiB", number="3", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "EFI partition must have filesystem 'fat32'." in str(e.value)
+
+    # Missing 'boot' and 'esp' flags
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="2049MiB", end="400GiB", number="1", unit="GiB", flags=[]),
+                SwapPartition(start="2049MiB", end="400GiB", number="2", unit="GiB"),
+                RootPartition(start="2049MiB", end="400GiB", number="3", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "Flags must include both 'boot' and 'esp'" in str(e.value)
+
+    # Missing 'boot' flag
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="2049MiB", end="400GiB", number="1", unit="GiB", flags=["esp"]),
+                SwapPartition(start="2049MiB", end="400GiB", number="2", unit="GiB"),
+                RootPartition(start="2049MiB", end="400GiB", number="3", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "Flags must include both 'boot' and 'esp'" in str(e.value)
+
+    # Missing 'esp' flag
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="2049MiB", end="400GiB", number="1", unit="GiB", flags=["boot"]),
+                SwapPartition(start="2049MiB", end="400GiB", number="2", unit="GiB"),
+                RootPartition(start="2049MiB", end="400GiB", number="3", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "Flags must include both 'boot' and 'esp'" in str(e.value)
+
+
+def test_swap_partition_validation():
+    # Missing 'swap' flag
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="2049MiB", end="400GiB", number="1", unit="GiB"),
+                SwapPartition(start="2049MiB", end="400GiB", number="2", unit="GiB", flags=[]),
+                RootPartition(start="2049MiB", end="400GiB", number="3", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "Flags must include 'swap'" in str(e.value)
+
+    # Invalid filesystem
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="2049MiB", end="400GiB", number="1", unit="GiB"),
+                SwapPartition(start="2049MiB", end="400GiB", number="2", unit="GiB", fs="ext4"),
+                RootPartition(start="2049MiB", end="400GiB", number="3", unit="GiB", fs="ext4"),
+            ]
+        )
+
+    assert "Swap partition must have filesystem 'linux-swap'" in str(e.value)
 
 def test_missing_required_fields_in_efi_partition_raises_validation_error():
     with pytest.raises(ValueError) as e:
@@ -276,13 +524,13 @@ def test_changing_required_value_in_swap_partition_raises_validation_error():
             size="500GiB",
             partitions=[
                 EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
-                SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", fs="invalid"),
+                SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", fs="ext4"),
                 RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4", flags=["a", "b"]),
             ]
         )
 
     # File system must be linux-swap for swap partition, not 'invalid'
-    assert "fs\n  Input should be 'linux-swap'" in str(e.value)
+    assert "Swap partition must have filesystem 'linux-swap'" in str(e.value)
 
 def test_excluding_root_partition_raises_validation_error():
     with pytest.raises(ValueError) as e:
@@ -352,7 +600,7 @@ def test_invalid_partition_type_for_general_partition_raises_validation_error():
         ]
     )
 
-    assert "Invalid partition type" in str(e.value)
+    assert "Input should be 'efi', 'swap' or 'general'" in str(e.value)
 
 def test_creating_swap_efi_and_root_paritions_using_ordinary_partitions_succeeds():
     disk = Disk(
@@ -826,3 +1074,46 @@ def test_invalid_hostname_and_locale_raises_validation_error():
         )
     assert "Hostname must be alphanumeric and can include hyphens" in str(e.value)
     assert "Invalid locale format. Expected format is 'en_US.UTF-8'" in str(e.value)
+
+
+# E2E tests
+def test_valid_schema():
+    with patch("os.path.isfile", return_value=True):
+        config = Config.model_validate(TEST_SCHEMA_1)
+
+    assert config.root_password == "password"
+    assert config.hostname == "my-server"
+    assert config.locale == "en_US.UTF-8"
+    assert len(config.users) == 2
+    assert config.packages == ["vim", "git", "python3"]
+
+def test_invalid_schema_where_efi_partition_has_incorrect_filesystem():
+    with pytest.raises(ValueError) as e:
+        with patch("os.path.isfile", return_value=True):
+            Config.model_validate(TEST_SCHEMA_2)
+
+    assert "EFI partition must have filesystem 'fat32'." in str(e.value)
+
+def test_valid_schema_with_fully_defined_partitions():
+    with patch("os.path.isfile", return_value=True):
+        config = Config.model_validate(TEST_SCHEMA_3)
+
+    for partition in config.disk.partitions:
+        if isinstance(partition, EFIPartition):
+            assert partition.start == "1MiB"
+            assert partition.end == "512MiB"
+            assert partition.number == "1"
+            assert partition.unit == "MiB"
+            assert partition.flags == ["boot", "esp"]
+        elif isinstance(partition, SwapPartition):
+            assert partition.start == "513MiB"
+            assert partition.end == "1024MiB"
+            assert partition.number == "2"
+            assert partition.unit == "MiB"
+            assert partition.flags == ["swap"]
+        elif isinstance(partition, RootPartition):
+            assert partition.start == "1025MiB"
+            assert partition.end == "500GiB"
+            assert partition.number == "3"
+            assert partition.unit == "GiB"
+            assert partition.fs == "ext4"
