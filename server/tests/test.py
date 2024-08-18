@@ -267,3 +267,18 @@ def test_adding_flags_to_root_partition_is_successful():
     )
 
     assert disk.partitions[2].flags == ["a", "b"]
+
+def test_changing_required_value_in_swap_partition_raises_validation_error():
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
+                SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", fs="invalid"),
+                RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4", flags=["a", "b"]),
+            ]
+        )
+
+    # File system must be linux-swap for swap partition, not 'invalid'
+    assert "fs\n  Input should be 'linux-swap'" in str(e.value)
