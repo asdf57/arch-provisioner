@@ -1,3 +1,5 @@
+import ipaddress
+import os
 from pydantic import BaseModel, field_validator
 from typing import List, Literal, Tuple, Union, Optional
 
@@ -237,6 +239,17 @@ class Disk(BaseModel):
     size: str
     partitions: List[Partition]
 
+    @field_validator('device')
+    def validate_device(cls, v):
+        if not v.startswith('/dev/'):
+            raise ValueError(f"Device must start with '/dev/'. Given: {v}")
+
+        return v
+
+    @field_validator('size')
+    def validate_size(cls, v):
+        return validate_size(v)
+
     @field_validator('partitions')
     def check_partition_requirements(cls, partitions):
         total_partitions = []
@@ -285,6 +298,44 @@ class Ansible(BaseModel):
     inventory: List[str]
     private_key: str
     playbook: str
+
+    @field_validator('host')
+    def validate_host(cls, v):
+        if not v.replace('.', '').replace('-', '').isalnum():
+            raise ValueError('Invalid host format. Host must be alphanumeric with optional dots and hyphens.')
+        return v
+
+    @field_validator('port')
+    def validate_port(cls, v):
+        if not 0 <= v <= 65535:
+            raise ValueError('Port must be between 0 and 65535')
+        return v
+
+    @field_validator('inventory')
+    def validate_inventory(cls, v):
+        if len(v) == 0:
+            raise ValueError('Inventory list must contain at least one entry')
+
+        for ip in v:
+            try:
+                ipaddress.ip_address(ip)
+            except ValueError:
+                raise ValueError(f"Invalid IP address: {ip}")
+        return v
+
+    @field_validator('private_key')
+    def validate_private_key(cls, v):
+        if not os.path.isfile(v):
+            raise ValueError(f"Private key file not found: {v}")
+
+        return v
+
+    @field_validator('playbook')
+    def validate_playbook(cls, v):
+        if not os.path.isfile(v):
+            raise ValueError(f"Playbook file not found: {v}")
+
+        return v
 
 class User(BaseModel):
     username: str
