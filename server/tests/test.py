@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from pydantic import ValidationError
 import pytest
-from server.schema import Ansible, EFIPartition, RootPartition, SwapPartition, validate_size, Partition, Disk
+from server.schema import Ansible, EFIPartition, RootPartition, SwapPartition, User, validate_size, Partition, Disk
 
 TEST_SCHEMA_1 = {
     "ansible": {
@@ -581,3 +581,84 @@ def test_ansible_with_invalid_host_and_ip_raises_validation_error():
             )
     assert "Invalid host format" in str(e.value)
     assert "Invalid IP address: invalid_ip" in str(e.value)
+
+def test_user_with_valid_data():
+    user = User(
+        username="user1",
+        password="password1",
+        groups=["sudo", "users"],
+        shell="/bin/bash"
+    )
+    assert user.username == "user1"
+    assert user.password == "password1"
+    assert user.groups == ["sudo", "users"]
+    assert user.shell == "/bin/bash"
+
+def test_invalid_username_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        User(
+            username="invalid user!",
+            password="password1",
+            groups=["sudo", "users"],
+            shell="/bin/bash"
+        )
+    assert "Username must be alphanumeric" in str(e.value)
+
+def test_empty_password_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        User(
+            username="user1",
+            password="",
+            groups=["sudo", "users"],
+            shell="/bin/bash"
+        )
+    assert "Password cannot be empty" in str(e.value)
+
+def test_invalid_group_name_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        User(
+            username="user1",
+            password="password1",
+            groups=["sudo", "invalid group!"],
+            shell="/bin/bash"
+        )
+    assert "Group names must be alphanumeric" in str(e.value)
+
+def test_shell_not_absolute_path_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        User(
+            username="user1",
+            password="password1",
+            groups=["sudo", "users"],
+            shell="bin/bash"
+        )
+    assert "Shell must be an absolute path" in str(e.value)
+
+def test_user_with_valid_and_invalid_groups():
+    user = User(
+        username="user1",
+        password="password1",
+        groups=["sudo", "users"],
+        shell="/bin/bash"
+    )
+    assert user.groups == ["sudo", "users"]
+
+    with pytest.raises(ValidationError) as e:
+        User(
+            username="user1",
+            password="password1",
+            groups=["sudo", "invalid group!"],
+            shell="/bin/bash"
+        )
+    assert "Group names must be alphanumeric" in str(e.value)
+
+def test_user_with_invalid_username_and_shell_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        User(
+            username="invalid user!",
+            password="password1",
+            groups=["sudo", "users"],
+            shell="bin/bash"
+        )
+    assert "Username must be alphanumeric" in str(e.value)
+    assert "Shell must be an absolute path" in str(e.value)
