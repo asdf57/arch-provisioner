@@ -138,13 +138,13 @@ def test_additional_flags_in_efi_partition_is_successful():
         device="/dev/sda",
         size="500GiB",
         partitions=[
-            EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB", flags=["boot", "esp", "additional"]),
+            EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB", flags=["boot", "esp", "LVM"]),
             SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB"),
             RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4"),
         ]
     )
 
-    assert disk.partitions[0].flags == ["boot", "esp", "additional"]
+    assert disk.partitions[0].flags == ["boot", "esp", "LVM"]
 
 def test_no_flags_in_efi_partition_raises_validation_error():
     with pytest.raises(ValueError) as e:
@@ -179,7 +179,7 @@ def test_one_invalid_flag_in_efi_partition_raises_validation_error():
             device="/dev/sda",
             size="500GiB",
             partitions=[
-                EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB", flags=["boot", "invalid"]), # Invalid flag replacing 'esp'
+                EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB", flags=["boot", "hidden"]), # Invalid flag replacing 'esp'
                 SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB"),
                 RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4"),
             ]
@@ -207,12 +207,12 @@ def test_additional_flags_in_swap_partition_is_successful():
         size="500GiB",
         partitions=[
             EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
-            SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", flags=["swap", "additional"]),
+            SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", flags=["swap", "PREP"]),
             RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4"),
         ]
     )
 
-    assert disk.partitions[1].flags == ["swap", "additional"]
+    assert disk.partitions[1].flags == ["swap", "PREP"]
 
 def test_no_flags_in_swap_partition_raises_validation_error():
     with pytest.raises(ValueError) as e:
@@ -248,7 +248,7 @@ def test_one_invalid_flag_in_swap_partition_raises_validation_error():
             size="500GiB",
             partitions=[
                 EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
-                SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", flags=["invalid"]),  # Invalid flag replacing 'swap'
+                SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB", flags=["bios_grub"]),  # Invalid flag replacing 'swap'
                 RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4"),
             ]
         )
@@ -262,11 +262,11 @@ def test_adding_flags_to_root_partition_is_successful():
         partitions=[
             EFIPartition(start="1MiB", end="512MiB", number="1", unit="MiB"),
             SwapPartition(start="513MiB", end="1024MiB", number="2", unit="MiB"),
-            RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4", flags=["a", "b"]),
+            RootPartition(start="1025MiB", end="500GiB", number="3", unit="GiB", fs="ext4", flags=["DIAG", "LVM"]),
         ]
     )
 
-    assert disk.partitions[2].flags == ["a", "b"]
+    assert disk.partitions[2].flags == ["DIAG", "LVM"]
 
 def test_changing_required_value_in_swap_partition_raises_validation_error():
     with pytest.raises(ValueError) as e:
