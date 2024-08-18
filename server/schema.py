@@ -343,6 +343,30 @@ class User(BaseModel):
     groups: List[str]
     shell: str
 
+    @field_validator('username')
+    def validate_username(cls, v):
+        if not v.isalnum():
+            raise ValueError('Username must be alphanumeric')
+        return v
+
+    @field_validator('password')
+    def validate_password(cls, v):
+        if not v:
+            raise ValueError('Password cannot be empty')
+        return v
+
+    @field_validator('groups')
+    def validate_groups(cls, v):
+        if not all(group.isalnum() for group in v):
+            raise ValueError('Group names must be alphanumeric')
+        return v
+
+    @field_validator('shell')
+    def validate_shell(cls, v):
+        if not v.startswith('/'):
+            raise ValueError('Shell must be an absolute path')
+        return v
+
 class Config(BaseModel):
     ansible: Optional[Ansible] = None
     disk: Optional[Disk] = None
