@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from pydantic import ValidationError
 import pytest
-from server.schema import Ansible, EFIPartition, RootPartition, SwapPartition, User, validate_size, Partition, Disk
+from server.schema import Ansible, Config, EFIPartition, RootPartition, SwapPartition, User, validate_size, Partition, Disk
 
 TEST_SCHEMA_1 = {
     "ansible": {
@@ -662,3 +662,167 @@ def test_user_with_invalid_username_and_shell_raises_validation_error():
         )
     assert "Username must be alphanumeric" in str(e.value)
     assert "Shell must be an absolute path" in str(e.value)
+
+def test_config_with_valid_data():
+    config = Config(
+        root_password="rootpass",
+        hostname="my-server",
+        locale="en_US.UTF-8",
+        users=[
+            User(
+                username="user1",
+                password="password1",
+                groups=["sudo", "users"],
+                shell="/bin/bash"
+            ),
+            User(
+                username="user2",
+                password="password2",
+                groups=["users"],
+                shell="/bin/sh"
+            )
+        ],
+        packages=["vim", "git", "python3"]
+    )
+    assert config.root_password == "rootpass"
+    assert config.hostname == "my-server"
+    assert config.locale == "en_US.UTF-8"
+    assert len(config.users) == 2
+    assert config.packages == ["vim", "git", "python3"]
+
+def test_invalid_root_password_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        Config(
+            root_password="",
+            hostname="my-server",
+            locale="en_US.UTF-8",
+            users=[
+                User(
+                    username="user1",
+                    password="password1",
+                    groups=["sudo", "users"],
+                    shell="/bin/bash"
+                )
+            ],
+            packages=["vim", "git", "python3"]
+        )
+    assert "Root password cannot be empty" in str(e.value)
+
+def test_invalid_hostname_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        Config(
+            root_password="rootpass",
+            hostname="invalid hostname!",
+            locale="en_US.UTF-8",
+            users=[
+                User(
+                    username="user1",
+                    password="password1",
+                    groups=["sudo", "users"],
+                    shell="/bin/bash"
+                )
+            ],
+            packages=["vim", "git", "python3"]
+        )
+    assert "Hostname must be alphanumeric and can include hyphens" in str(e.value)
+
+def test_invalid_locale_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        Config(
+            root_password="rootpass",
+            hostname="my-server",
+            locale="invalid-locale",
+            users=[
+                User(
+                    username="user1",
+                    password="password1",
+                    groups=["sudo", "users"],
+                    shell="/bin/bash"
+                )
+            ],
+            packages=["vim", "git", "python3"]
+        )
+    assert "Invalid locale format" in str(e.value)
+
+def test_empty_users_list_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        Config(
+            root_password="rootpass",
+            hostname="my-server",
+            locale="en_US.UTF-8",
+            users=[],
+            packages=["vim", "git", "python3"]
+        )
+    assert "Users list cannot be empty" in str(e.value)
+
+def test_valid_and_invalid_packages():
+    # Valid packages
+    config = Config(
+        root_password="rootpass",
+        hostname="my-server",
+        locale="en_US.UTF-8",
+        users=[
+            User(
+                username="user1",
+                password="password1",
+                groups=["sudo", "users"],
+                shell="/bin/bash"
+            )
+        ],
+        packages=["vim", "git", "python3"]
+    )
+    assert config.packages == ["vim", "git", "python3"]
+
+    # Invalid package name (empty string)
+    with pytest.raises(ValidationError) as e:
+        Config(
+            root_password="rootpass",
+            hostname="my-server",
+            locale="en_US.UTF-8",
+            users=[
+                User(
+                    username="user1",
+                    password="password1",
+                    groups=["sudo", "users"],
+                    shell="/bin/bash"
+                )
+            ],
+            packages=["vim", "git", ""]
+        )
+    assert "Package names cannot be empty" in str(e.value)
+
+def test_missing_root_password_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        Config(
+            hostname="my-server",
+            locale="en_US.UTF-8",
+            users=[
+                User(
+                    username="user1",
+                    password="password1",
+                    groups=["sudo", "users"],
+                    shell="/bin/bash"
+                )
+            ],
+            packages=["vim", "git", "python3"]
+        )
+    assert "root_password\n  Field required" in str(e.value)
+
+def test_invalid_hostname_and_locale_raises_validation_error():
+    with pytest.raises(ValidationError) as e:
+        Config(
+            root_password="rootpass",
+            hostname="invalid hostname!",
+            locale="invalid-locale",
+            users=[
+                User(
+                    username="user1",
+                    password="password1",
+                    groups=["sudo", "users"],
+                    shell="/bin/bash"
+                )
+            ],
+            packages=["vim", "git", "python3"]
+        )
+    assert "Hostname must be alphanumeric and can include hyphens" in str(e.value)
+    assert "Invalid locale format. Expected format is 'en_US.UTF-8'" in str(e.value)
