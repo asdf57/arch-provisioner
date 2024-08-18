@@ -1,6 +1,7 @@
+from unittest.mock import patch
 from pydantic import ValidationError
 import pytest
-from server.schema import EFIPartition, RootPartition, SwapPartition, validate_size, Partition, Disk
+from server.schema import Ansible, EFIPartition, RootPartition, SwapPartition, validate_size, Partition, Disk
 
 TEST_SCHEMA_1 = {
     "ansible": {
@@ -415,3 +416,168 @@ def test_multiple_swap_partitions_raises_validation_error():
         )
 
     assert "There can be at most one Swap partition" in str(e.value)
+
+def test_ansible_with_valid_data():
+    with patch("os.path.isfile", return_value=True):
+        ansible = Ansible(
+            host="example-host",
+            port=22,
+            user="admin",
+            inventory=["192.168.1.49", "10.0.0.1"],
+            private_key="/path/to/private_key.pem",
+            playbook="/path/to/playbook.yml"
+        )
+    assert ansible.host == "example-host"
+    assert ansible.port == 22
+    assert ansible.user == "admin"
+    assert ansible.inventory == ["192.168.1.49", "10.0.0.1"]
+    assert ansible.private_key == "/path/to/private_key.pem"
+    assert ansible.playbook == "/path/to/playbook.yml"
+
+def test_ansible_with_valid_ip_address_as_host():
+    with patch("os.path.isfile", return_value=True):
+        ansible = Ansible(
+            host="192.168.1.1",
+            port=22,
+            user="admin",
+            inventory=["192.168.1.49", "10.0.0.1"],
+            private_key="/path/to/private_key.pem",
+            playbook="/path/to/playbook.yml"
+        )
+    assert ansible.host == "192.168.1.1"
+    assert ansible.port == 22
+    assert ansible.user == "admin"
+    assert ansible.inventory == ["192.168.1.49", "10.0.0.1"]
+    assert ansible.private_key == "/path/to/private_key.pem"
+    assert ansible.playbook == "/path/to/playbook.yml"
+
+def test_invalid_host_format_raises_validation_error():
+    with patch("os.path.isfile", return_value=True):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="invalid_host!@#",
+                port=22,
+                user="admin",
+                inventory=["192.168.1.49"],
+                private_key="/path/to/private_key.pem",
+                playbook="/path/to/playbook.yml"
+            )
+    assert "Invalid host format" in str(e.value)
+
+def test_invalid_ip_in_inventory_raises_validation_error():
+    with patch("os.path.isfile", return_value=True):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="example-host",
+                port=22,
+                user="admin",
+                inventory=["192.168.1.49", "invalid_ip"],
+                private_key="/path/to/private_key.pem",
+                playbook="/path/to/playbook.yml"
+            )
+    assert "Invalid IP address: invalid_ip" in str(e.value)
+
+def test_nonexistent_private_key_raises_validation_error():
+    with patch("os.path.isfile", side_effect=lambda x: x != "/path/to/nonexistent_key.pem"):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="example-host",
+                port=22,
+                user="admin",
+                inventory=["192.168.1.49"],
+                private_key="/path/to/nonexistent_key.pem",
+                playbook="/path/to/playbook.yml"
+            )
+    assert "Private key file not found" in str(e.value)
+
+def test_nonexistent_playbook_raises_validation_error():
+    with patch("os.path.isfile", side_effect=lambda x: x != "/path/to/nonexistent_playbook.yml"):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="example-host",
+                port=22,
+                user="admin",
+                inventory=["192.168.1.49"],
+                private_key="/path/to/private_key.pem",
+                playbook="/path/to/nonexistent_playbook.yml"
+            )
+    assert "Playbook file not found" in str(e.value)
+
+def test_ansible_with_empty_inventory_raises_validation_error():
+    with patch("os.path.isfile", return_value=True):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="example-host",
+                port=22,
+                user="admin",
+                inventory=[],
+                private_key="/path/to/private_key.pem",
+                playbook="/path/to/playbook.yml"
+            )
+    assert "Inventory list must contain at least one entry" in str(e.value)
+
+def test_ansible_with_invalid_port_raises_validation_error():
+    with patch("os.path.isfile", return_value=True):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="example-host",
+                port=65536,
+                user="admin",
+                inventory=["192.168.1.49"],
+                private_key="/path/to/private_key.pem",
+                playbook="/path/to/playbook.yml"
+            )
+    assert "Port must be between 0 and 65535" in str(e.value)
+
+def test_ansible_with_valid_and_invalid_inventory():
+    with patch("os.path.isfile", return_value=True):
+        # Valid
+        ansible = Ansible(
+            host="example-host",
+            port=22,
+            user="admin",
+            inventory=["192.168.1.49"],
+            private_key="/path/to/private_key.pem",
+            playbook="/path/to/playbook.yml"
+        )
+        assert ansible.inventory == ["192.168.1.49"]
+
+        # Invalid
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="example-host",
+                port=22,
+                user="admin",
+                inventory=["invalid-ip"],
+                private_key="/path/to/private_key.pem",
+                playbook="/path/to/playbook.yml"
+            )
+        assert "Invalid IP address: invalid-ip" in str(e.value)
+
+def test_ansible_with_nonexistent_private_key_and_playbook():
+    with patch("os.path.isfile", side_effect=lambda x: x not in ["/path/to/nonexistent_key.pem", "/path/to/nonexistent_playbook.yml"]):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="example-host",
+                port=22,
+                user="admin",
+                inventory=["192.168.1.49"],
+                private_key="/path/to/nonexistent_key.pem",
+                playbook="/path/to/nonexistent_playbook.yml"
+            )
+    assert "Private key file not found" in str(e.value)
+    assert "Playbook file not found" in str(e.value)
+
+def test_ansible_with_invalid_host_and_ip_raises_validation_error():
+    with patch("os.path.isfile", return_value=True):
+        with pytest.raises(ValidationError) as e:
+            Ansible(
+                host="invalid_host!@#",
+                port=22,
+                user="admin",
+                inventory=["invalid_ip"],
+                private_key="/path/to/private_key.pem",
+                playbook="/path/to/playbook.yml"
+            )
+    assert "Invalid host format" in str(e.value)
+    assert "Invalid IP address: invalid_ip" in str(e.value)
