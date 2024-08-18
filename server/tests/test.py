@@ -338,6 +338,69 @@ def test_multiple_efi_partitions_raises_validation_error():
 
     assert "There must be exactly one EFI partition" in str(e.value)
 
+def test_invalid_partition_type_for_general_partition_raises_validation_error():
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+        device="/dev/sda",
+        size="500GiB",
+        partitions=[
+            Partition(type="invalid", align="optimal", fs="ext4", label="root", flags=[], name="Root Partition", resize="false", state="present", start="1025MiB", end="500GiB", number="4", unit="GiB"),
+            Partition(type="efi", align="optimal", fs="fat32", label="gpt", flags=['boot', 'esp'], name="EFI System", resize="false", state="present", start="1MiB", end="512MiB", number="1", unit="MiB"),
+            Partition(type="swap", align="optimal", fs="linux-swap", label="swap", flags=['swap'], name="Swap", resize="false", state="present", start="513MiB", end="1024MiB", number="2", unit="MiB"),
+            Partition(type="general", align="optimal", fs="ext4", label="root", flags=[], name="Root Partition", resize="false", state="present", start="1025MiB", end="500GiB", number="3", unit="GiB"),
+        ]
+    )
+
+    assert "Invalid partition type" in str(e.value)
+
+def test_creating_swap_efi_and_root_paritions_using_ordinary_partitions_succeeds():
+    disk = Disk(
+        device="/dev/sda",
+        size="500GiB",
+        partitions=[
+            Partition(type="efi", align="optimal", fs="fat32", label="gpt", flags=['boot', 'esp'], name="EFI System", resize="false", state="present", start="1MiB", end="512MiB", number="1", unit="MiB"),
+            Partition(type="swap", align="optimal", fs="linux-swap", label="swap", flags=['swap'], name="Swap", resize="false", state="present", start="513MiB", end="1024MiB", number="2", unit="MiB"),
+            Partition(type="general", align="optimal", fs="ext4", label="root", flags=[], name="Root Partition", resize="false", state="present", start="1025MiB", end="500GiB", number="3", unit="GiB"),
+        ]
+    )
+
+    assert len(disk.partitions) == 3
+    assert isinstance(disk.partitions[0], Partition)
+    assert isinstance(disk.partitions[1], Partition)
+    assert isinstance(disk.partitions[2], Partition)
+
+def test_creating_efi_partition_through_ordinary_partition_with_invalid_mandatory_field_raises_validation_error():
+    with pytest.raises(ValueError) as e:
+        disk = Disk(
+            device="/dev/sda",
+            size="500GiB",
+            partitions=[
+                Partition(type="efi", align="optimal", fs="fat32", label="gpt", flags=['esp'], name="EFI System", resize="false", state="present", start="1MiB", end="512MiB", number="1", unit="MiB"), # Missing 'boot' flag
+                Partition(type="swap", align="optimal", fs="linux-swap", label="swap", flags=['swap'], name="Swap", resize="false", state="present", start="513MiB", end="1024MiB", number="2", unit="MiB"),
+                Partition(type="general", align="optimal", fs="ext4", label="root", flags=[], name="Root Partition", resize="false", state="present", start="1025MiB", end="500GiB", number="3", unit="GiB"),
+            ]
+        )
+
+    assert "Flags must include both 'boot' and 'esp'" in str(e.value)
+
+def test_creating_swap_efi_and_root_partitions_using_ordinary_partitions_with_additional_partitions_succeeds():
+    disk = Disk(
+        device="/dev/sda",
+        size="500GiB",
+        partitions=[
+            Partition(type="efi", align="optimal", fs="fat32", label="gpt", flags=['boot', 'esp'], name="EFI System", resize="false", state="present", start="1MiB", end="512MiB", number="1", unit="MiB"),
+            Partition(type="swap", align="optimal", fs="linux-swap", label="swap", flags=['swap'], name="Swap", resize="false", state="present", start="513MiB", end="1024MiB", number="2", unit="MiB"),
+            Partition(type="general", align="optimal", fs="ext4", label="root", flags=[], name="Root Partition", resize="false", state="present", start="1025MiB", end="500GiB", number="3", unit="GiB"),
+            Partition(type="general", align="optimal", fs="ext4", label="home", flags=[], name="Home Partition", resize="false", state="present", start="500GiB", end="1000GiB", number="4", unit="GiB"),
+        ]
+    )
+
+    assert len(disk.partitions) == 4
+    assert isinstance(disk.partitions[0], Partition)
+    assert isinstance(disk.partitions[1], Partition)
+    assert isinstance(disk.partitions[2], Partition)
+    assert isinstance(disk.partitions[3], Partition)
+
 def test_multiple_swap_partitions_raises_validation_error():
     with pytest.raises(ValueError) as e:
         disk = Disk(
