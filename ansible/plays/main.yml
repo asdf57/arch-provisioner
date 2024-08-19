@@ -1,16 +1,6 @@
 - name: Arch Linux Pre-Installation
   hosts: all
   become: yes
-  vars:
-    disk_device: ""
-    boot_partition_min: ""
-    boot_partition_max: ""
-    swap_partition_min: ""
-    swap_partition_max: ""
-    root_partition_min: ""
-    root_partition_max: ""
-    root_filesystem: ""
-
   roles:
     - role: pre_install_checks
     - role: system_preparation
