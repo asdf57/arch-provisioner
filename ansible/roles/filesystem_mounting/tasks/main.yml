@@ -1,0 +1,19 @@
+---
+- name: Mount root partition
+  ansible.builtin.mount:
+    src: "{{ disk_device }}3"
+    path: /mnt
+    fstype: "{{ root_filesystem }}"
+    state: mounted
+
+- name: Create /boot mount point
+  ansible.builtin.file:
+    path: /mnt/boot
+    state: directory
+
+- name: Mount /boot partition
+  ansible.builtin.mount:
+    src: "{{ disk_device }}1"
+    path: /mnt/boot
+    fstype: vfat
+    state: mounted

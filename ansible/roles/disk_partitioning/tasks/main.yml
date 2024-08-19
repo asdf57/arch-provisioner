@@ -1,0 +1,42 @@
+---
+- name: Create GPT partition table
+  community.general.parted:
+    device: "{{ disk_device }}"
+    label: gpt
+
+- name: Create /boot partition
+  community.general.parted:
+    device: "{{ disk_device }}"
+    number: 1
+    part_type: primary
+    filesystem: fat32
+    state: present
+    start: "{{ boot_partition_min }}"
+    end: "{{ boot_partition_max }}"
+
+- name: Set boot and esp flags on /boot partition
+  community.general.parted:
+    device: "{{ disk_device }}"
+    number: 1
+    flags: [ boot, esp ]
+    state: present
+
+- name: Create swap partition
+  community.general.parted:
+    device: "{{ disk_device }}"
+    number: 2
+    part_type: primary
+    filesystem: linux-swap
+    state: present
+    start: "{{ swap_partition_min }}"
+    end: "{{ swap_partition_max }}"
+
+- name: Create root partition
+  community.general.parted:
+    device: "{{ disk_device }}"
+    number: 3
+    part_type: primary
+    filesystem: "{{ root_filesystem }}"
+    state: present
+    start: "{{ root_partition_min }}"
+    end: "{{ root_partition_max }}"

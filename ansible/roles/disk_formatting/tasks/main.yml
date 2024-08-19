@@ -1,0 +1,20 @@
+---
+- name: Format /boot partition
+  ansible.builtin.filesystem:
+    fstype: vfat
+    dev: "{{ disk_device }}1"
+
+- name: Format swap partition
+  ansible.builtin.filesystem:
+    fstype: swap
+    dev: "{{ disk_device }}2"
+
+- name: Enable swap partition
+  ansible.builtin.swap:
+    name: "{{ disk_device }}2"
+    state: present
+
+- name: Format root partition
+  ansible.builtin.filesystem:
+    fstype: "{{ root_filesystem }}"
+    dev: "{{ disk_device }}3"

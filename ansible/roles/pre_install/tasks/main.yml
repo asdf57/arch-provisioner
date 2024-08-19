@@ -1,0 +1,33 @@
+---
+- name: Verify the boot mode (UEFI or BIOS)
+  stat:
+    path: /sys/firmware/efi/efivars
+  register: boot_mode
+
+- name: Set fact for boot mode msg
+  set_fact:
+    boot_mode_message: "{{ 'Booted in UEFI mode' if boot_mode.stat.exists else 'Booted in BIOS mode' }}"
+  
+- name: Display boot mode
+  debug:
+    msg: "{{ boot_mode_message }}"
+
+- name: Check internet connection
+  uri:
+    url: http://archlinux.org
+    return_content: no
+  register: internet_check
+
+- name: Fail if no internet connection
+  fail:
+    msg: "Unable to connect to archlinux.org"
+  when: internet_check.status != 200
+
+- name: Set the console keyboard layout
+  community.general.localectl:
+    keymap: us
+
+- name: Update the system clock
+  community.general.timedatectl:
+    ntp: true
+
