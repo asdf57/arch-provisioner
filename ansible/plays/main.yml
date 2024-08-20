@@ -3,7 +3,6 @@
   become: yes
   roles:
     - role: pre_install
-    - role: system_preparation
     - role: disk_partitioning
     - role: disk_formatting
     - role: filesystem_mounting
