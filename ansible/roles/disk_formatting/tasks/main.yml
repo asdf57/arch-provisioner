@@ -1,20 +1,23 @@
 ---
-- name: Format /boot partition
+- name: Format EFI partition
   ansible.builtin.filesystem:
-    fstype: vfat
-    dev: "{{ disk_device }}1"
+    fstype: "{{ efi_partition_fs }}"
+    dev: "{{ disk_device }}{{ efi_partition_number }}"
 
-- name: Format swap partition
+- name: Format swap partition (if defined)
   ansible.builtin.filesystem:
-    fstype: swap
-    dev: "{{ disk_device }}2"
+    fstype: "{{ swap_partition_fs }}"
+    dev: "{{ disk_device }}{{ swap_partition_number }}"
+  when: has_swap_partition
 
-- name: Enable swap partition
+- name: Enable swap partition (if defined)
   ansible.builtin.swap:
-    name: "{{ disk_device }}2"
+    name: "{{ disk_device }}{{ swap_partition_number }}"
     state: present
+  when: has_swap_partition
 
-- name: Format root partition
+- name: Format general partitions
   ansible.builtin.filesystem:
-    fstype: "{{ root_filesystem }}"
-    dev: "{{ disk_device }}3"
+    fstype: "{{ item.fs }}"
+    dev: "{{ disk_device }}{{ item.number }}"
+  loop: "{{ general_partitions }}"

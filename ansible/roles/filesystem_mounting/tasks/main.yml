@@ -1,19 +1,23 @@
 ---
-- name: Mount root partition
+- name: Mount root partitions
   ansible.builtin.mount:
-    src: "{{ disk_device }}3"
-    path: /mnt
-    fstype: "{{ root_filesystem }}"
+    src: "{{ disk_device }}{{ item.number }}"
+    path: /mnt/{{ item.name | lower | replace(' ', '_') }}"
+    fstype: "{{ item.fs }}"
     state: mounted
+  loop: "{{ general_partitions }}"
+  loop_control:
+    index_var: partition_index
+  when: partition_index == 0
 
 - name: Create /boot mount point
   ansible.builtin.file:
     path: /mnt/boot
     state: directory
 
-- name: Mount /boot partition
+- name: Mount EFI partition
   ansible.builtin.mount:
-    src: "{{ disk_device }}1"
+    src: "{{ disk_device }}{{ efi_partition_number }}"
     path: /mnt/boot
-    fstype: vfat
+    fstype: "{{ efi_partition_fs }}"
     state: mounted

@@ -1,42 +1,47 @@
+# disk_partitioning role
 ---
 - name: Create GPT partition table
   community.general.parted:
     device: "{{ disk_device }}"
     label: gpt
 
-- name: Create /boot partition
+- name: Create EFI partition
   community.general.parted:
     device: "{{ disk_device }}"
-    number: 1
+    number: "{{ efi_partition_number }}"
     part_type: primary
-    filesystem: fat32
-    state: present
-    start: "{{ boot_partition_min }}"
-    end: "{{ boot_partition_max }}"
+    filesystem: "{{ efi_partition_fs }}"
+    state: "{{ efi_partition_state }}"
+    start: "{{ efi_partition_start }}"
+    end: "{{ efi_partition_end }}"
+    unit: "{{ efi_partition_unit }}"
+    align: "{{ efi_partition_align }}"
+    flags: "{{ efi_partition_flags }}"
 
-- name: Set boot and esp flags on /boot partition
+- name: Create swap partition (if defined)
   community.general.parted:
     device: "{{ disk_device }}"
-    number: 1
-    flags: [ boot, esp ]
-    state: present
-
-- name: Create swap partition
-  community.general.parted:
-    device: "{{ disk_device }}"
-    number: 2
+    number: "{{ swap_partition_number }}"
     part_type: primary
-    filesystem: linux-swap
-    state: present
-    start: "{{ swap_partition_min }}"
-    end: "{{ swap_partition_max }}"
+    filesystem: "{{ swap_partition_fs }}"
+    state: "{{ swap_partition_state }}"
+    start: "{{ swap_partition_start }}"
+    end: "{{ swap_partition_end }}"
+    unit: "{{ swap_partition_unit }}"
+    align: "{{ swap_partition_align }}"
+    flags: "{{ swap_partition_flags }}"
+  when: has_swap_partition
 
-- name: Create root partition
+- name: Create general partitions
   community.general.parted:
     device: "{{ disk_device }}"
-    number: 3
+    number: "{{ item.number }}"
     part_type: primary
-    filesystem: "{{ root_filesystem }}"
-    state: present
-    start: "{{ root_partition_min }}"
-    end: "{{ root_partition_max }}"
+    filesystem: "{{ item.fs }}"
+    state: "{{ item.state }}"
+    start: "{{ item.start }}"
+    end: "{{ item.end }}"
+    unit: "{{ item.unit }}"
+    align: "{{ item.align }}"
+    flags: "{{ item.flags }}"
+  loop: "{{ general_partitions }}"
