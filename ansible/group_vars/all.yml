@@ -41,3 +41,6 @@ swap_partition_unit: "{{ swap_partition.unit if has_swap_partition else '' }}"
 
 # General (Root) Partitions (List)
 general_partitions: "{{ disk.partitions | selectattr('type', 'equalto', 'general') | list }}"
+
+# Packages
+packages: "{{ packages | default([]) | list }}"

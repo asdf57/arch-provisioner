@@ -4,16 +4,10 @@
     fstype: "{{ efi_partition_fs }}"
     dev: "{{ disk_device }}{{ efi_partition_number }}"
 
-- name: Format swap partition (if defined)
+- name: Format swap partition
   ansible.builtin.filesystem:
     fstype: "{{ swap_partition_fs }}"
     dev: "{{ disk_device }}{{ swap_partition_number }}"
-  when: has_swap_partition
-
-- name: Enable swap partition (if defined)
-  ansible.builtin.swap:
-    name: "{{ disk_device }}{{ swap_partition_number }}"
-    state: present
   when: has_swap_partition
 
 - name: Format general partitions

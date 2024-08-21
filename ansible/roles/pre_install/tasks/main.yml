@@ -7,7 +7,7 @@
 - name: Set fact for boot mode msg
   set_fact:
     boot_mode_message: "{{ 'Booted in UEFI mode' if boot_mode.stat.exists else 'Booted in BIOS mode' }}"
-  
+
 - name: Display boot mode
   debug:
     msg: "{{ boot_mode_message }}"
@@ -23,11 +23,20 @@
     msg: "Unable to connect to archlinux.org"
   when: internet_check.status != 200
 
-- name: Set the console keyboard layout
-  community.general.localectl:
-    keymap: us
+- name: Load the keymap
+  ansible.builtin.command:
+    cmd: "loadkeys {{ keymap }}"
 
-- name: Update the system clock
-  community.general.timedatectl:
-    ntp: true
+- name: Set ntp
+  ansible.builtin.shell:
+    cmd: "timedatectl set-ntp true"
 
+- name: Check that NTP is enabled
+  ansible.builtin.shell:
+    cmd: |
+      "timedatectl status | grep 'clock synchronized: yes'"
+      "timedatectl status | grep 'NTP service: active'"
+  register: ntp_check
+  fail:
+    msg: "NTP is not enabled"
+  when: ntp_check.rc != 0
