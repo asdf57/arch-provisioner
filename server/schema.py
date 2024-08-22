@@ -1,6 +1,6 @@
 import ipaddress
 import os
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator, Field, field_serializer
 from typing import List, Literal, Tuple, Union, Optional
 
 FLAGS = [
@@ -179,6 +179,11 @@ class Partition(BaseModel):
         if v not in ['MiB', 'GiB', '%']:
             raise ValueError(f"Invalid unit: {v}")
         return v
+
+    # Serializers
+    @field_serializer('flags', when_used='json')
+    def serialize_flags(v: List[str]) -> str:
+        return ' '.join(v)
 
 class EFIPartition(Partition):
     """
