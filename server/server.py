@@ -39,68 +39,13 @@ def run_ansible():
     except Exception as e:
         return jsonify({'error': f'Invalid request: {e}'}), 400
 
-    # Ansible connection details
-    ansible_host = config.ansible.host
-    ansible_port = config.ansible.port
-    ansible_user = config.ansible.user
-    inventory = ",".join(config.ansible.inventory) + ","
-    ansible_ssh_private_key_file = config.ansible.private_key
-    playbook = config.ansible.playbook
-
-    # Disk configuration
-    disk_device = config.disk.device
-
-    # Partitions
-    efi_partition = next((p for p in config.disk.partitions if p.type == 'efi'), None)
-    swap_partition = next((p for p in config.disk.partitions if p.type == 'swap'), None)
-    general_partitions = [p for p in config.disk.partitions if p.type == 'general']
-
-    # System configuration
-    root_password = config.root_password
-    hostname = config.hostname
-    locale = config.locale
-    username = config.users[0].username
-    password = config.users[0].password
-
     client_id = gen_client_id()
 
     ansible_command = [
-        'ansible-playbook', '-i', inventory,
-        '-e', f'ansible_host={ansible_host}',
-        '-e', f'ansible_port={ansible_port}',
-        '-e', f'ansible_user={ansible_user}',
-        '-e', f'ansible_ssh_private_key_file={ansible_ssh_private_key_file}',
-        '-e', f'disk_device={disk_device}',
-        '-e', f'efi_partition_number={efi_partition.number}',
-        '-e', f'efi_partition_align={efi_partition.align}',
-        '-e', f'efi_partition_flags={efi_partition.flags}',
-        '-e', f'efi_partition_fs={efi_partition.fs}',
-        '-e', f'efi_partition_label={efi_partition.label}',
-        '-e', f'efi_partition_name={efi_partition.name}',
-        '-e', f'efi_partition_start={efi_partition.start}',
-        '-e', f'efi_partition_end={efi_partition.end}',
-        '-e', f'efi_partition_resize={efi_partition.resize}',
-        '-e', f'efi_partition_state={efi_partition.state}',
-        '-e', f'efi_partition_unit={efi_partition.unit}',
-        '-e', f'has_swap_partition={swap_partition is not None}',
-        '-e', f'swap_partition_number={swap_partition.number if swap_partition else ""}',
-        '-e', f'swap_partition_align={swap_partition.align if swap_partition else ""}',
-        '-e', f'swap_partition_flags={swap_partition.flags if swap_partition else ""}',
-        '-e', f'swap_partition_fs={swap_partition.fs if swap_partition else ""}',
-        '-e', f'swap_partition_label={swap_partition.label if swap_partition else ""}',
-        '-e', f'swap_partition_name={swap_partition.name if swap_partition else ""}',
-        '-e', f'swap_partition_start={swap_partition.start if swap_partition else ""}',
-        '-e', f'swap_partition_end={swap_partition.end if swap_partition else ""}',
-        '-e', f'swap_partition_resize={swap_partition.resize if swap_partition else ""}',
-        '-e', f'swap_partition_state={swap_partition.state if swap_partition else ""}',
-        '-e', f'swap_partition_unit={swap_partition.unit if swap_partition else ""}',
-        '-e', f'general_partitions={general_partitions}',
-        '-e', f'root_password={root_password}',
-        '-e', f'locale={locale}',
-        '-e', f'hostname={hostname}',
-        '-e', f'username={username}',
-        '-e', f'password={password}',
-        playbook
+        'ansible-playbook',
+        '-i', config.ansible.inventory,
+        '-e', f'config={config}',
+        config.ansible.playbook
     ]
 
     env = os.environ.copy()
