@@ -351,6 +351,10 @@ class Ansible(BaseModel):
 
         return v
 
+    @field_serializer('inventory', when_used='json')
+    def serialize_inventory(v: List[str]) -> str:
+        return ','.join(v)
+
 class User(BaseModel):
     username: str
     password: str
