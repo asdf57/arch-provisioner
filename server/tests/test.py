@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 from pydantic import ValidationError
 import pytest
@@ -1117,3 +1118,12 @@ def test_valid_schema_with_fully_defined_partitions():
             assert partition.number == "3"
             assert partition.unit == "GiB"
             assert partition.fs == "ext4"
+
+
+def test_model_to_json_serialization():
+    with patch("os.path.isfile", return_value=True):
+        config = Config.model_validate(TEST_SCHEMA_1)
+        config_json = json.dumps(config.model_dump(mode='json'))
+        loaded_json = json.loads(config_json)
+
+        assert loaded_json['disk']['partitions'][0]['flags'] == "boot esp"
