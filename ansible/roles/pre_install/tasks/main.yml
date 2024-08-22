@@ -36,6 +36,7 @@
     cmd: |
       "timedatectl status | grep 'clock synchronized: yes'"
       "timedatectl status | grep 'NTP service: active'"
+
   register: ntp_check
   fail:
     msg: "NTP is not enabled"
