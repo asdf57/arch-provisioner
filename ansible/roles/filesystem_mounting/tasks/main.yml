@@ -1,23 +1,28 @@
 ---
-- name: Mount root partitions
-  ansible.builtin.mount:
-    src: "{{ disk_device }}{{ item.number }}"
-    path: /mnt/{{ item.name | lower | replace(' ', '_') }}"
-    fstype: "{{ item.fs }}"
+- name: Mount primary root partition to /mnt
+  ansible.posix.mount:
+    src: "{{ disk_device }}{{ general_partitions[0].number }}"
+    path: /mnt
     state: mounted
-  loop: "{{ general_partitions }}"
-  loop_control:
-    index_var: partition_index
-  when: partition_index == 0
+    fstype: "{{ general_partitions[0].fs }}"
 
-- name: Create /boot mount point
+- name: Create mount point for boot partition
   ansible.builtin.file:
-    path: /mnt/boot
+    path: /mnt/boot/efi
     state: directory
 
-- name: Mount EFI partition
-  ansible.builtin.mount:
+- name: Mount the EFI partition to /boot/efi
+  ansible.posix.mount:
     src: "{{ disk_device }}{{ efi_partition_number }}"
-    path: /mnt/boot
-    fstype: "{{ efi_partition_fs }}"
+    path: /mnt/boot/efi
     state: mounted
+    fstype: vfat
+
+# - name: Mount additional partitions (if defined)
+#   ansible.posix.mount:
+#     src: "{{ disk_device }}{{ item.number }}"
+#     path: /mnt
+#     state: mounted
+#     fstype: "{{ general_partitions[0].fs }}"
+#   loop: "{{ general_partitions[1:] }}"
+#   when: general_partitions | length > 0
