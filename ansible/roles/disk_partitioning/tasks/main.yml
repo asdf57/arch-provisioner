@@ -1,32 +1,31 @@
 # disk_partitioning role
 ---
-- name: Create GPT partition table
-  community.general.parted:
-    device: "{{ disk_device }}"
-    label: gpt
+# Note: Do not specify the file system of partitions during the partitioning process. Do this during the formatting process!!!
 
+# Warning for future note: manually specifying fs_type for the EFI partition will cause parted to AUTOMATICALLY add the lba flag to the partition!!!!!
+# THIS BREAKS THE PARTED MODULE'S FLAG PROCESSING LOGIC!!!!!!
 - name: Create EFI partition
   community.general.parted:
     device: "{{ disk_device }}"
-    number: "{{ efi_partition_number }}"
-    part_type: primary
-    filesystem: "{{ efi_partition_fs }}"
+    name: "{{ efi_partition_name }}"
+    label: gpt
+    number: "{{ efi_partition_number | int }}"
     state: "{{ efi_partition_state }}"
-    start: "{{ efi_partition_start }}"
-    end: "{{ efi_partition_end }}"
+    part_end: "{{ efi_partition_end }}"
+    name: "{{ efi_partition_name }}"
     unit: "{{ efi_partition_unit }}"
-    align: "{{ efi_partition_align }}"
     flags: "{{ efi_partition_flags }}"
 
 - name: Create swap partition (if defined)
   community.general.parted:
     device: "{{ disk_device }}"
-    number: "{{ swap_partition_number }}"
+    label: gpt
+    name: "{{ swap_partition_name }}"
+    number: "{{ swap_partition_number | int }}"
     part_type: primary
-    filesystem: "{{ swap_partition_fs }}"
     state: "{{ swap_partition_state }}"
-    start: "{{ swap_partition_start }}"
-    end: "{{ swap_partition_end }}"
+    part_start: "{{ swap_partition_start }}"
+    part_end: "{{ swap_partition_end }}"
     unit: "{{ swap_partition_unit }}"
     align: "{{ swap_partition_align }}"
     flags: "{{ swap_partition_flags }}"
@@ -34,14 +33,33 @@
 
 - name: Create general partitions
   community.general.parted:
+    label: gpt
+    name: "{{ item.name }}"
     device: "{{ disk_device }}"
-    number: "{{ item.number }}"
+    number: "{{ item.number | int }}"
     part_type: primary
-    filesystem: "{{ item.fs }}"
     state: "{{ item.state }}"
-    start: "{{ item.start }}"
-    end: "{{ item.end }}"
+    part_start: "{{ item.start }}"
+    part_end: "{{ item.end }}"
     unit: "{{ item.unit }}"
     align: "{{ item.align }}"
     flags: "{{ item.flags }}"
   loop: "{{ general_partitions }}"
+
+- name: Post check for partitions
+  block:
+    - name: Get disk partition info
+      community.general.parted:
+        state: info
+        device: "{{ disk_device }}"
+      register: disk_partitions
+
+    - name: Show disk partition info
+      debug:
+        var: disk_partitions
+
+    - name: Check that correct number of partitions were created
+      assert:
+        that: "disk_partitions.partitions | length == disk.partitions | length"
+        fail_msg: "Incorrect number of partitions created ({{ disk_partitions.partitions | length }} partitions created)"
+        success_msg: "Correct number of partitions created"
