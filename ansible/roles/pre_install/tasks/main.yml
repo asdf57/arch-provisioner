@@ -23,21 +23,21 @@
     msg: "Unable to connect to archlinux.org"
   when: internet_check.status != 200
 
-- name: Load the keymap
-  ansible.builtin.command:
-    cmd: "loadkeys {{ keymap }}"
+# - name: Load the keymap
+#   ansible.builtin.command:
+#     cmd: "loadkeys {{ keymap }}"
 
-- name: Set ntp
+- name: Set NTP
   ansible.builtin.shell:
     cmd: "timedatectl set-ntp true"
 
 - name: Check that NTP is enabled
   ansible.builtin.shell:
-    cmd: |
-      "timedatectl status | grep 'clock synchronized: yes'"
-      "timedatectl status | grep 'NTP service: active'"
+    cmd: "timedatectl status | grep 'clock synchronized: yes'"
+  register: time_sync_check
 
-  register: ntp_check
+- name: Fail if clock is not synchronized
   fail:
-    msg: "NTP is not enabled"
-  when: ntp_check.rc != 0
+    msg: "Clock is not synchronized"
+  when: time_sync_check.rc != 0
+
