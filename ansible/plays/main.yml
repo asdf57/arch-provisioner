@@ -1,6 +1,50 @@
 - name: Arch Linux Pre-Installation
   hosts: all
   become: yes
+  pre_tasks:
+    - name: Set efi_partition and swap_partition
+      set_fact:
+        efi_partition: "{{ (disk.partitions | selectattr('type', 'equalto', 'efi') | first | default(None)) }}"
+        swap_partition: "{{ (disk.partitions | selectattr('type', 'equalto', 'swap') | first | default(None)) }}"
+
+    - name: Set efi_partition attributes
+      set_fact:
+        efi_partition_number: "{{ efi_partition.number | default('') }}"
+        efi_partition_align: "{{ efi_partition.align | default('') }}"
+        efi_partition_flags: "{{ efi_partition.flags | default('') }}"
+        efi_partition_fs: "{{ efi_partition.fs | default('') }}"
+        efi_partition_label: "{{ efi_partition.label | default('') }}"
+        efi_partition_name: "{{ efi_partition.name | default('') }}"
+        efi_partition_start: "{{ efi_partition.start | default('') }}"
+        efi_partition_end: "{{ efi_partition.end | default('') }}"
+        efi_partition_resize: "{{ efi_partition.resize | default('') }}"
+        efi_partition_state: "{{ efi_partition.state | default('') }}"
+        efi_partition_unit: "{{ efi_partition.unit | default('') }}"
+
+    - name: Set swap_partition attributes
+      set_fact:
+        has_swap_partition: "{{ swap_partition is not none }}"
+        swap_partition_number: "{{ swap_partition.number | default('') }}"
+        swap_partition_align: "{{ swap_partition.align | default('') }}"
+        swap_partition_flags: "{{ swap_partition.flags | default('') }}"
+        swap_partition_fs: "{{ swap_partition.fs | default('') }}"
+        swap_partition_label: "{{ swap_partition.label | default('') }}"
+        swap_partition_name: "{{ swap_partition.name | default('') }}"
+        swap_partition_start: "{{ swap_partition.start | default('') }}"
+        swap_partition_end: "{{ swap_partition.end | default('') }}"
+        swap_partition_resize: "{{ swap_partition.resize | default('') }}"
+        swap_partition_state: "{{ swap_partition.state | default('') }}"
+        swap_partition_unit: "{{ swap_partition.unit | default('') }}"
+
+    # Set General Variables
+    - name: Set general disk variables and other settings
+      set_fact:
+        disk_device: "{{ disk.device }}"
+        disk_size: "{{ disk.size }}"
+        general_partitions: "{{ disk.partitions | selectattr('type', 'equalto', 'general') | list }}"
+        users: "{{ users | default([]) | list }}"
+        packages: "{{ packages | default([]) | list }}"
+
   roles:
     - role: pre_install
     - role: disk_partitioning
