@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 import subprocess
@@ -28,7 +29,6 @@ def read_process_output(process, client_id):
     process.wait()
     socketio.emit('ansible_output', {'data': f'Process exited with code {process.returncode}'}, room=clients.get(client_id))
 
-
 @app.route('/run-ansible', methods=['POST'])
 def run_ansible():
     data = request.json
@@ -40,17 +40,23 @@ def run_ansible():
         return jsonify({'error': f'Invalid request: {e}'}), 400
 
     client_id = gen_client_id()
+    serialized_config = config.model_dump(mode="json")
 
     ansible_command = [
         'ansible-playbook',
-        '-i', config.ansible.inventory,
-        '-e', f'config={config}',
-        config.ansible.playbook
+        '-i', serialized_config['ansible']['inventory'],
+        '-e', f'{serialized_config}',
+        '-e', f'ansible_port={serialized_config["ansible"]["port"]}',
+        '-e', f'ansible_user={serialized_config["ansible"]["user"]}',
+        '-e', f'ansible_host={serialized_config["ansible"]["host"]}',
+        serialized_config['ansible']['playbook']
     ]
 
     env = os.environ.copy()
     env['ANSIBLE_SSH_ARGS'] = '-o StrictHostKeyChecking=no'
+    # env['ANSIBLE_ROLES_PATH'] = '/home/archusr/dev/arch-provisioner/ansible/roles'
 
+    # Launch the subprocess
     ansible_process = subprocess.Popen(ansible_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
 
     socketio.start_background_task(target=read_process_output, process=ansible_process, client_id=client_id)
