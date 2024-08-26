@@ -1,5 +1,6 @@
 import ipaddress
 import os
+from passlib.hash import sha512_crypt
 from pydantic import BaseModel, field_validator, Field, field_serializer
 from typing import List, Literal, Tuple, Union, Optional
 
@@ -106,7 +107,7 @@ class Partition(BaseModel):
     fs: str = Field(...)
     label: str = Field(...)
     name: str = Field(...)
-    number: str = Field(...)
+    number: int = Field(...)
     start: str = Field(...)
     end: str = Field(...)
     resize: str = Field(default="false")
@@ -154,7 +155,7 @@ class Partition(BaseModel):
 
     @field_validator('number')
     def validate_partition_number(cls, v):
-        if not v.isdigit():
+        if v <= 0:
             raise ValueError(f"Partition number must be a positive integer. Given: {v}")
         return v
 
@@ -181,9 +182,9 @@ class Partition(BaseModel):
         return v
 
     # Serializers
-    @field_serializer('flags', when_used='json')
-    def serialize_flags(v: List[str]) -> str:
-        return ' '.join(v)
+    # @field_serializer('flags', when_used='json')
+    # def serialize_flags(v: List[str]) -> str:
+    #     return ' '.join(v)
 
 class EFIPartition(Partition):
     """
@@ -353,7 +354,7 @@ class Ansible(BaseModel):
 
     @field_serializer('inventory', when_used='json')
     def serialize_inventory(v: List[str]) -> str:
-        return ','.join(v)
+        return ','.join(v) + ','
 
 class User(BaseModel):
     username: str
@@ -384,6 +385,10 @@ class User(BaseModel):
         if not v.startswith('/'):
             raise ValueError('Shell must be an absolute path')
         return v
+
+    @field_serializer('password', when_used='json')
+    def serialize_password(v: str) -> str:
+        return sha512_crypt.hash(v)
 
 class Config(BaseModel):
     ansible: Optional[Ansible] = None
