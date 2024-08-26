@@ -1103,19 +1103,19 @@ def test_valid_schema_with_fully_defined_partitions():
         if isinstance(partition, EFIPartition):
             assert partition.start == "1MiB"
             assert partition.end == "512MiB"
-            assert partition.number == "1"
+            assert partition.number == 1
             assert partition.unit == "MiB"
             assert partition.flags == ["boot", "esp"]
         elif isinstance(partition, SwapPartition):
             assert partition.start == "513MiB"
             assert partition.end == "1024MiB"
-            assert partition.number == "2"
+            assert partition.number == 2
             assert partition.unit == "MiB"
             assert partition.flags == ["swap"]
         elif isinstance(partition, RootPartition):
             assert partition.start == "1025MiB"
             assert partition.end == "500GiB"
-            assert partition.number == "3"
+            assert partition.number == 3
             assert partition.unit == "GiB"
             assert partition.fs == "ext4"
 
