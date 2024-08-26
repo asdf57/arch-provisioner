@@ -1,168 +1,152 @@
 ---
-- name: Mount root partition to /mnt
-  ansible.posix.mount:
-    src: "{{ disk_device }}{{ general_partitions[0].number }}"
-    path: /mnt
-    state: mounted
+- name: Setup pacman keyring
+  block:
+    - name: Setup pacman keyring
+      ansible.builtin.command: pacman-key --init
+
+    - name: Populate pacman keyring
+      ansible.builtin.command: pacman-key --populate
+
+- name: Rank Arch mirrors using reflector
+  block:
+    - name: Install the reflector package
+      community.general.pacman:
+        name:
+          - reflector
+        update_cache: yes
+
+    - name: Search for the fastest mirrors supporting HTTPS
+      ansible.builtin.shell: reflector --verbose --latest 10 --sort rate | awk -e '! /rsync/ {print}' > /etc/pacman.d/mirrorlist
 
 - name: Install the base system
   ansible.builtin.shell:
-    cmd: "pacstrap /mnt base linux linux-firmware"
+    cmd: "pacstrap -K /mnt base linux linux-firmware"
   args:
     creates: /mnt/bin
 
-- name: Generate the fstab file
+- name: Setup fstab
+  block:
+    - name: Generate fstab entries
+      ansible.builtin.shell: |
+        genfstab -U /mnt >> /mnt/etc/fstab
+      args:
+        executable: /bin/bash
+
+- name: Create symlink for timezone
   ansible.builtin.shell:
-    cmd: "genfstab -U /mnt >> /mnt/etc/fstab"
-  args:
-    creates: /mnt/etc/fstab
+    cmd: "arch-chroot /mnt ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime"
 
-  - name: Create symlink for timezone
-    ansible.builtin.shell:
-      cmd: "arch-chroot /mnt ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime"
+- name: Set the hardware clock
+  ansible.builtin.shell:
+    cmd: "arch-chroot /mnt hwclock --systohc"
 
-  - name: Set the hardware clock
-    ansible.builtin.shell:
-      cmd: "arch-chroot /mnt hwclock --systohc"
-
+- name: Setup locale
+  block:
   - name: Set locale.gen
-    ansible.builtin.shell:
-      cmd: "sed -i '/^#{{ locale }} UTF-8/s/^#//' /mnt/etc/locale.gen"
+    ansible.builtin.lineinfile:
+      dest: /mnt/etc/locale.gen
+      regexp: "^#{{ locale }} UTF-8"
+      line: "{{ locale }} UTF-8"
+      state: present
 
   - name: Create and set LANG in locale.conf
     block:
       - name: Create locale.conf
         ansible.builtin.copy:
           dest: /mnt/etc/locale.conf
-          content: 'LANG={{ locale }}\n'
+          content: 'LANG={{ locale }}'
           force: no
 
   - name: Generate locale
     ansible.builtin.shell:
       cmd: "arch-chroot /mnt locale-gen"
 
-  - name: Set the hostname
-    ansible.builtin.shell:
-      cmd: "arch-chroot /mnt echo '{{ hostname }}' > /etc/hostname"
+- name: Set the hostname
+  ansible.builtin.lineinfile:
+    path: /mnt/etc/hostname
+    line: "{ hostname }}"
+    create: yes
+    mode: '0644'
+    owner: root
+    group: root
 
-  - name: Set the hosts file
-    ansible.builtin.copy:
-      content: |
-        127.0.1.1   localhost
-        ::1         localhost
-        127.0.1.1   {{ hostname }}.localdomain {{ hostname }}
-      dest: /mnt/etc/hosts
-      mode: '0644'
-      owner: root
-      group: root
-      backup: yes
-      force: no
+- name: Set the hosts file
+  ansible.builtin.blockinfile:
+    path: /mnt/etc/hosts
+    block: |
+      127.0.1.1   localhost
+      ::1         localhost
+      127.0.1.1   {{ hostname }}.localdomain {{ hostname }}
+    mode: '0644'
+    owner: root
+    group: root
+    backup: yes
 
-  - name: Set the root password
-    ansible.builtin.shell:
-      cmd: "arch-chroot /mnt echo 'root:{{ root_password }}' | chpasswd"
+- name: Set the root password
+  ansible.builtin.shell:
+    cmd: "arch-chroot /mnt echo 'root:{{ root_password }}' | chpasswd"
 
-  - name: Setup users
-    block:
-      - name: Create users
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt useradd -m -s {{ item.shell }} {{ item.username }}"
-        loop: "{{ users }}"
-        args:
-          creates: "/mnt/home/{{ item.username }}"
+- name: Setup users
+  block:
+    - name: Setup users
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        password: "{{ item.password }}"
+        shell: "{{ item.shell }}"
+        state: present
+        create_home: yes
+        groups: "{{ item.groups | join(',') }}"
+        append: yes
+      loop: "{{ users }}"
+      when: item.groups is defined and item.groups | length > 0
+      no_log: true
 
-      - name: Add groups to users
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt usermod -aG {{ item.groups | join(',') }} {{ item.username }}"
-        loop: "{{ users }}"
-        args:
-          creates: "/mnt/home/{{ item.username }}"
-        when: item.groups is defined and item.groups | length > 0
+- name: Install and configure sudo
+  block:
+    - name: Install sudo
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt pacman -S --noconfirm sudo"
 
-      - name: Set passwords for users
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt echo '{{ item.username }}:{{ item.password }}' | chpasswd"
-        loop: "{{ users }}"
+    - name: Add wheel group to sudoers
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /etc/sudoers"
 
-  - name: Install and configure sudo
-    block:
-      - name: Install sudo
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt pacman -S --noconfirm sudo"
+- name: Configure the bootloader
+  block:
+    - name: Install bootloader related packages
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt pacman -S --noconfirm grub efibootmgr dosfstools os-prober mtools"
 
-      - name: Add wheel group to sudoers
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /etc/sudoers"
+    - name: Run grub install command
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub_uefi --recheck"
+      register: grub_install
 
-  - name: Configure the bootloader
-    block:
-      - name: Install bootloader related packages
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt pacman -S --noconfirm efibootmgr dosfstools os-prober mtools"
+    - name: Fail if GRUB installation fails
+      fail:
+        msg: "Failed to install GRUB bootloader"
+      when: grub_install.rc != 0
 
-      - name: Make /boot/EFI directory
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt mkdir -p /boot/EFI"
+    - name: Generate GRUB configuration file
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg"
 
-      - name: Mount the EFI partition to /boot/EFI
-        ansible.posix.mount:
-          src: "{{ disk_device }}{{ efi_partition_number }}"
-          path: /mnt/boot/EFI
+- name: Install and setup essential packages
+  block:
+    - name: Install essential packages
+      ansible.builtin.command:
+        cmd: "arch-chroot /mnt pacman -S --noconfirm networkmanager"
+      when: packages is defined and packages | length > 0
 
-      - name: Run grub install command
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub_uefi --recheck"
-        register: grub_install
-        fail:
-          msg: "Failed to install GRUB bootloader"
-        when: grub_install.rc != 0
+    - name: Enable NetworkManager
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt systemctl enable NetworkManager"
 
-      - name: Generate GRUB configuration file
-        ansible.builtin.shell:
-          cmd: "arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg"
+- name: Install packages
+  ansible.builtin.shell:
+    cmd: "arch-chroot /mnt pacman -S --noconfirm {{ packages | join(' ') }}"
+  when: packages is defined and packages | length > 0
 
-  - name: Install essential packages
-    ansible.builtin.shell:
-      cmd: "arch-chroot /mnt pacman -S --noconfirm networkmanager reflector"
-
-  - name: Enable NetworkManager
-    ansible.builtin.shell:
-      cmd: "arch-chroot /mnt systemctl enable NetworkManager"
-
-  - name: Update the mirror list
-    ansible.builtin.shell:
-      cmd: "arch-chroot /mnt reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist"
-
-  - name: Install packages
-    ansible.builtin.command:
-      cmd: "arch-chroot /mnt pacman -S --noconfirm {{ packages | join(' ') }}"
-    when: packages is defined and packages | length > 0
-
-# - name: Run security audit
-#   block:
-#     - name: Run Lynis security audit
-#       ansible.builtin.shell:
-#         cmd: lynis audit system
-#       register: lynis_output
-#       failed_when: "'Warning' in lynis_output.stdout or 'Vulnerable' in lynis_output.stdout"
-#       ignore_errors: yes
-
-#     - name: Run SSH audit
-#       ansible.builtin.shell:
-#         cmd: ssh-audit localhost
-#       register: ssh_audit_output
-#       failed_when: "'is not recommended' in ssh_audit_output.stdout or 'is vulnerable' in ssh_audit_output.stdout"
-#       ignore_errors: yes
-
-# - name: Check audit results
-#   block:
-#     - name: Fail if Lynis found vulnerabilities
-#       ansible.builtin.fail:
-#         msg: "Lynis found security issues. Please review the audit report."
-#       when: "'Warning' in lynis_output.stdout or 'Vulnerable' in lynis_output.stdout"
-
-#     - name: Fail if SSH audit found vulnerabilities
-#       ansible.builtin.fail:
-#         msg: "SSH audit found security issues. Please review the SSH audit report."
-#       when: "'is not recommended' in ssh_audit_output.stdout or 'is vulnerable' in ssh_audit_output.stdout"
-
+- name: Reload systemd daemons
+  ansible.builtin.shell:
+    cmd: "arch-chroot /mnt systemctl daemon-reload"
