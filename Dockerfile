@@ -34,10 +34,14 @@ RUN addgroup condor root
 # Set up the working directory
 WORKDIR /home/condor/provision
 
-COPY arch_provisioning_key /home/condor/.ssh/
-COPY arch_provisioning_key.pub /home/condor/.ssh/
+# Copy all private keys to the container
+COPY * /home/condor/.ssh/
 
-COPY scripts/* /etc/profile.d/
+# COPY arch_provisioning_key /home/condor/.ssh/
+
+COPY profile.d/* /etc/profile.d/
+
+COPY scripts /usr/local/bin
 
 # Copy necessary files
 COPY ansible.cfg /etc/ansible/
