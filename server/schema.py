@@ -295,8 +295,6 @@ class Disk(BaseModel):
         num_swap_partitions = sum(isinstance(p, SwapPartition) for p in transformed_partitions)
         num_root_partitions = sum(isinstance(p, RootPartition) for p in transformed_partitions)
 
-        print(f"EFI: {num_efi_partitions}, Swap: {num_swap_partitions}, Root: {num_root_partitions}, partitions: {partitions}\n\ntransformed: {transformed_partitions}")
-
         if num_efi_partitions != 1:
             raise ValueError("There must be exactly one EFI partition.")
         if num_root_partitions < 1:
@@ -311,7 +309,6 @@ class Ansible(BaseModel):
     port: int
     user: str
     inventory: List[str]
-    private_key: str
     playbook: str
 
     @field_validator('host')
@@ -336,13 +333,6 @@ class Ansible(BaseModel):
                 ipaddress.ip_address(ip)
             except ValueError:
                 raise ValueError(f"Invalid IP address: {ip}")
-        return v
-
-    @field_validator('private_key')
-    def validate_private_key(cls, v):
-        if not os.path.isfile(v):
-            raise ValueError(f"Private key file not found: {v}")
-
         return v
 
     @field_validator('playbook')
