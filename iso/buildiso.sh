@@ -8,6 +8,7 @@ help_message="Usage: $0 -b <distro> [-o <output_dir>] [-s <ssh key name>] [-v] [
   -b  The distribution to build the ISO for. Valid values are:
       debian, ubuntu, gentoo, arch
   -o  The output directory to write the ISO  (relative to the specified distro directory)
+  -s  The name of the SSH key to use for provisioning. The key must already exist in $HOME/.ssh
   -v  Enable verbose mode
   -h  Display this help message"
 
