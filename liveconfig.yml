@@ -1,0 +1,9 @@
+arch:
+  private_ssh_key: "id_rsa_server1"
+  public_ssh_key: "id_rsa_server1.pub"
+ubuntu:
+  private_ssh: "id_rsa_server2"
+  public_ssh: "id_rsa_server2.pub"
+debian:
+  private_ssh: "id_rsa_server3"
+  public_ssh: "id_rsa_server3.pub"
