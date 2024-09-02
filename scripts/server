@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import os
+import json
+import argparse
+import subprocess
+
+from utils.schema import Config
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Provisioner CLI tool")
+
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    provision_parser = subparsers.add_parser("provision", help="Runs OS provisioning")
+    provision_parser.add_argument("-s", "--schema", required=True, help="Path to the schema file")
+
+    args = parser.parse_args()
+
+    if args.command == "provision":
+        print(f"Provisioning OS using schema {args.schema}")
+        try:
+            with open(args.schema, "r") as f:
+                schema = json.load(f)
+                config = Config(**schema)
+                serialized_config = config.model_dump(mode="json")
+
+                ansible_command = [
+                    'ansible-playbook',
+                    '-i', serialized_config['ansible']['inventory'],
+                    '-e', f'{serialized_config}',
+                    '-e', f'ansible_port={serialized_config["ansible"]["port"]}',
+                    '-e', f'ansible_user={serialized_config["ansible"]["user"]}',
+                    '-e', f'ansible_host={serialized_config["ansible"]["host"]}',
+                    serialized_config['ansible']['playbook']
+                ]
+
+                subprocess.run(ansible_command, check=True)
+        except Exception as e:
+            print(f"Error: {e}")
+    else:
+        parser.print_help()

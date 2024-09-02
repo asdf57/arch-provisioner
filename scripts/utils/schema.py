@@ -328,11 +328,6 @@ class Ansible(BaseModel):
         if len(v) == 0:
             raise ValueError('Inventory list must contain at least one entry')
 
-        for ip in v:
-            try:
-                ipaddress.ip_address(ip)
-            except ValueError:
-                raise ValueError(f"Invalid IP address: {ip}")
         return v
 
     @field_validator('playbook')

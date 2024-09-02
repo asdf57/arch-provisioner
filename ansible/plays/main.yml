@@ -45,9 +45,29 @@
         users: "{{ users | default([]) | list }}"
         packages: "{{ packages | default([]) | list }}"
 
-  roles:
-    - role: pre_install
-    - role: disk_partitioning
-    - role: disk_formatting
-    - role: filesystem_mounting
-    - role: system_config
+  tasks:
+    - name: Include pre_install role
+      include_role:
+        name: pre_install
+
+    - name: Include disk_partitioning role
+      include_role:
+        name: disk_partitioning
+
+    - name: Include disk_formatting role
+      include_role:
+        name: disk_formatting
+
+    - name: Include filesystem_mounting role
+      include_role:
+        name: filesystem_mounting
+
+    - name: Include system_config role
+      include_role:
+        name: system_config
+
+    - name: Dynamically include roles based on packages
+      include_role:
+        name: "{{ item }}"
+      loop: "{{ packages }}"
+      when: item is string

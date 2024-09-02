@@ -142,11 +142,22 @@
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt systemctl enable NetworkManager"
 
-- name: Install packages
-  ansible.builtin.shell:
-    cmd: "arch-chroot /mnt pacman -S --noconfirm {{ packages | join(' ') }}"
-  when: packages is defined and packages | length > 0
+# - name: Install packages
+#   ansible.builtin.shell:
+#     cmd: "arch-chroot /mnt pacman -S --noconfirm {{ packages | join(' ') }}"
+#   when: packages is defined and packages | length > 0
 
-- name: Reload systemd daemons
-  ansible.builtin.shell:
-    cmd: "arch-chroot /mnt systemctl daemon-reload"
+# - name: Reload systemd daemons
+#   ansible.builtin.shell:
+#     cmd: "arch-chroot /mnt systemctl daemon-reload"
+
+- name: Add public SSH key to root's authorized_keys
+  ansible.builtin.lineinfile:
+    path: /mnt/root/.ssh/authorized_keys
+    line: "{{ lookup('file', '/home/condor/.ssh/{{ inventory_hostname }}_public_key.pub') }}"
+    create: yes
+    mode: '0600'
+    owner: root
+    group: root
+    state: present
+    insertafter: EOF

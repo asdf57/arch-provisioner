@@ -1,0 +1,6 @@
+kde_packages:
+  - plasma
+  - kde-applications
+
+install_sddm: true
+additional_packages: []
