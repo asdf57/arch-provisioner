@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Burn ISO to USB using dd
-# Usage: ./burn.sh /path/to/iso /dev/sdX
+# Usage: flash /path/to/iso /dev/sdX
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 /path/to/iso /dev/sdX"
