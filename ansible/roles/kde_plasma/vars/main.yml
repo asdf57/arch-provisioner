@@ -1,0 +1,3 @@
+xorg_packages:
+  - xorg-server
+  - xorg-xinit

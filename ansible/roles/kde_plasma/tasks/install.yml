@@ -1,0 +1,26 @@
+# tasks/install.yml
+
+- name: Install Xorg packages
+  pacman:
+    name: "{{ xorg_packages }}"
+    state: present
+    update_cache: yes
+
+- name: Install KDE Plasma and applications
+  pacman:
+    name: "{{ kde_packages + additional_packages }}"
+    state: present
+    update_cache: yes
+
+- name: Install and enable SDDM
+  pacman:
+    name: sddm
+    state: present
+  when: install_sddm
+
+- name: Enable SDDM service
+  systemd:
+    name: sddm
+    enabled: yes
+    state: started
+  when: install_sddm

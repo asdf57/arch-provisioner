@@ -1,0 +1,10 @@
+- name: Ensure SDDM theme is configured
+  command: sddm --example-config > /etc/sddm.conf
+  when: install_sddm
+
+- name: Customize SDDM configuration
+  lineinfile:
+    path: /etc/sddm.conf
+    regexp: '^#Theme='
+    line: 'Theme=archlinux-simplyblack'
+  when: install_sddm
