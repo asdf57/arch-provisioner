@@ -1,1 +1,2 @@
-private_key_path: "id_rsa_server2"
+public_key_path: "id_macmini.pub"
+private_key_path: "id_macmini"

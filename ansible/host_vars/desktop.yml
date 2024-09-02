@@ -1,1 +1,2 @@
-private_key_path: "id_rsa_server1"
+public_key_path: "id_desktop.pub"
+private_key_path: "id_desktop"
