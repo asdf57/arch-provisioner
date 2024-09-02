@@ -3,7 +3,7 @@
         "host": "localhost",
         "port": 60022,
         "user": "root",
-        "inventory": ["127.0.0.1"],
+        "inventory": ["desktop"],
         "playbook": "ansible/plays/main.yml"
     },
     "disk": {
@@ -41,15 +41,15 @@
         {
             "username": "user1",
             "password": "password1",
-            "groups": ["sudo", "users"],
+            "groups": ["wheel", "users"],
             "shell": "/bin/bash"
         },
         {
             "username": "user2",
             "password": "password2",
-            "groups": ["users"],
+            "groups": ["wheel"],
             "shell": "/bin/bash"
         }
     ],
-    "packages": ["vim", "git", "python3"]
+    "packages": ["kde_plasma"]
 }
