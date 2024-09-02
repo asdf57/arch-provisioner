@@ -9,5 +9,5 @@ ssh-add /home/condor/.ssh/arch_provisioning_key >/dev/null 2>&1
 export PS1="[\u@\h]: "
 
 echo "======================="
-echo "arch-provisioner v0.1.0"
+echo "      hss v0.1.0"
 echo -e "=======================\n"
