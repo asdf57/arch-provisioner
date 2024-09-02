@@ -35,8 +35,7 @@ if __name__ == "__main__":
                     serialized_config['ansible']['playbook']
                 ]
 
-                ansible_process = subprocess.Popen(ansible_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
+                subprocess.run(ansible_command, check=True)
         except Exception as e:
             print(f"Error: {e}")
     else:
