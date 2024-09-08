@@ -51,7 +51,7 @@ run_image() {
         -name archiso \
         "${qemu_options[@]}" \
         -serial stdio \
-        -no-reboot
+        -watchdog-action reset
 }
 
 image=""
