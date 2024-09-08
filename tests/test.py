@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch
 from pydantic import ValidationError
 import pytest
-from server.schema import Ansible, Config, EFIPartition, RootPartition, SwapPartition, User, validate_size, Partition, Disk
+from scripts.utils.schema import Ansible, Config, EFIPartition, RootPartition, SwapPartition, User, validate_size, Partition, Disk
 
 TEST_SCHEMA_1 = {
     "ansible": {

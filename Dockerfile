@@ -18,7 +18,8 @@ RUN apk add --no-cache \
     sudo \
     cargo \
     ansible \
-    vim
+    vim \
+    yq
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
@@ -47,8 +48,6 @@ COPY scripts /usr/local/bin
 COPY ansible.cfg /etc/ansible/
 COPY requirements.yml /home/condor/provision/
 COPY schemas /home/condor/provision/schemas/
-COPY server/schema.py /home/condor/provision/server/
-COPY server/server.py /home/condor/provision/server/
 
 COPY ansible /home/condor/provision/ansible/
 
