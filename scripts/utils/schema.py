@@ -305,29 +305,14 @@ class Disk(BaseModel):
         return transformed_partitions
 
 class Ansible(BaseModel):
-    host: str
     port: int
     user: str
-    inventory: List[str]
     playbook: str
-
-    @field_validator('host')
-    def validate_host(cls, v):
-        if not v.replace('.', '').replace('-', '').isalnum():
-            raise ValueError('Invalid host format. Host must be alphanumeric with optional dots and hyphens.')
-        return v
 
     @field_validator('port')
     def validate_port(cls, v):
         if not 0 <= v <= 65535:
             raise ValueError('Port must be between 0 and 65535')
-        return v
-
-    @field_validator('inventory')
-    def validate_inventory(cls, v):
-        if len(v) == 0:
-            raise ValueError('Inventory list must contain at least one entry')
-
         return v
 
     @field_validator('playbook')
@@ -336,10 +321,6 @@ class Ansible(BaseModel):
             raise ValueError(f"Playbook file not found: {v}")
 
         return v
-
-    @field_serializer('inventory', when_used='json')
-    def serialize_inventory(v: List[str]) -> str:
-        return ','.join(v) + ','
 
 class User(BaseModel):
     username: str
@@ -371,9 +352,9 @@ class User(BaseModel):
             raise ValueError('Shell must be an absolute path')
         return v
 
-    @field_serializer('password', when_used='json')
-    def serialize_password(v: str) -> str:
-        return sha512_crypt.hash(v)
+    # @field_serializer('password', when_used='json')
+    # def serialize_password(v: str) -> str:
+    #     return sha512_crypt.hash(v)
 
 class Config(BaseModel):
     ansible: Optional[Ansible] = None

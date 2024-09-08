@@ -14,6 +14,14 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     provision_parser = subparsers.add_parser("provision", help="Runs OS provisioning")
     provision_parser.add_argument("-s", "--schema", required=True, help="Path to the schema file")
+    provision_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
+    provision_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
+
+    wipe_parser = subparsers.add_parser("wipe", help="Wipes the partitions on the target machine")
+    wipe_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
+    wipe_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
+    wipe_parser.add_argument("-d", "--disk-device", required=True, help="Disk device to wipe")
+    wipe_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
 
     args = parser.parse_args()
 
@@ -27,16 +35,30 @@ if __name__ == "__main__":
 
                 ansible_command = [
                     'ansible-playbook',
-                    '-i', serialized_config['ansible']['inventory'],
+                    '-i', args.inventory,
                     '-e', f'{serialized_config}',
                     '-e', f'ansible_port={serialized_config["ansible"]["port"]}',
                     '-e', f'ansible_user={serialized_config["ansible"]["user"]}',
-                    '-e', f'ansible_host={serialized_config["ansible"]["host"]}',
+                    '-l', args.limit,
+                    '--private-key=/home/condor/.ssh/provisioning_key',
                     serialized_config['ansible']['playbook']
                 ]
 
                 subprocess.run(ansible_command, check=True)
         except Exception as e:
             print(f"Error: {e}")
+    elif args.command == "wipe":
+        print("Wiping partitions on the target machine")
+        ansible_command = [
+            'ansible-playbook',
+            '-i', args.inventory,
+            '-e', f'disk_device={args.disk_device}',
+            '-e', f'ansible_user={args.ansible_user}',
+            '-l', args.limit,
+            '--private-key=/home/condor/.ssh/provisioning_key',
+            'ansible/plays/wipe.yml'
+        ]
+
+        subprocess.run(ansible_command, check=True)
     else:
         parser.print_help()
