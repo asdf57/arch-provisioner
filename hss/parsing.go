@@ -24,7 +24,10 @@ type DistroConfig struct {
 	PublicSSHKey  string `yaml:"public_ssh_key"`
 }
 
-type LiveConfig map[string]DistroConfig
+type LiveConfig struct {
+	PrivateSSHKey string `yaml:"private_ssh_key"`
+	PublicSSHKey  string `yaml:"public_ssh_key"`
+}
 
 type BuildIsoCommand struct {
 	Distro       string `short:"d" description:"Linux distribution to build the ISO for" required:"true"`

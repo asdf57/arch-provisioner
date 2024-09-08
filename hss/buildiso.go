@@ -35,7 +35,7 @@ func (b *BuildIsoCommand) Execute(args []string) error {
 	var config LiveConfig
 	parseYamlFile(filePath, &config)
 
-	sshFileName := config[b.Distro].PublicSSHKey
+	sshFileName := config.PublicSSHKey
 	if b.PublicSSHKey != "provisioning_key.pub" {
 		sshFileName = b.PublicSSHKey
 	}
@@ -48,7 +48,7 @@ func (b *BuildIsoCommand) Execute(args []string) error {
 
 	log.Printf("[*] Using SSH public key: %s", sshPublicKeyPath)
 
-	copyFile(sshPublicKeyPath, "../iso/"+b.Distro+"/"+b.Distro+"_provisioning_key.pub")
+	copyFile(sshPublicKeyPath, "../iso/"+b.Distro+"/"+"provisioning_key.pub")
 
 	runCommand("docker build --platform linux/amd64 -t arch-iso-builder .", "../iso/"+b.Distro)
 

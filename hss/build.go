@@ -9,7 +9,7 @@ import (
 
 func (b *BuildCommand) Execute(args []string) error {
 	var config HostsConfig
-	parseYamlFile("../ansible/inventory/hosts.yml", &config)
+	parseYamlFile("../ansible/inventory/inventory.yml", &config)
 
 	//Check if temporary SSH directory needed for HSS build exists
 	if !isDirExists("ssh_keys") {
@@ -32,10 +32,8 @@ func (b *BuildCommand) Execute(args []string) error {
 	var liveConfig LiveConfig
 	parseYamlFile("../liveconfig.yml", &liveConfig)
 
-	//Copy the private keys for each distro to the ssh_keys directory
-	for _, distro := range VALID_DISTROS {
-		copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", liveConfig[distro].PrivateSSHKey), "ssh_keys/"+distro+"_provisioning_key")
-	}
+	//Copy the private provisioning key the ssh_keys directory
+	copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", liveConfig.PrivateSSHKey), "ssh_keys/"+"provisioning_key")
 
 	//Build the HSS Docker container
 	runCommand("docker build -t hss .", "..")
