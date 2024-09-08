@@ -1,12 +1,12 @@
 {
     "ansible": {
-        "port": 60022,
+        "port": 22,
         "user": "root",
         "playbook": "ansible/plays/provision.yml"
     },
     "disk": {
-        "device": "/dev/vda",
-        "size": "20GiB",
+        "device": "/dev/sda",
+        "size": "931.51GiB",
         "partitions": [
             {
                 "type": "efi",
@@ -39,7 +39,13 @@
         {
             "username": "user1",
             "password": "password1",
-            "groups": ["wheel", "users"],
+            "groups": [
+                "wheel",
+                "audio",
+                "video",
+                "storage",
+                "optical"
+            ],
             "shell": "/bin/bash"
         },
         {
