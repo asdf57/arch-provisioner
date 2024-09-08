@@ -1,3 +1,0 @@
-#!/bin/bash
-
-# Penultimate goal: Have this script add an inventory entry, generate the public+private key pair, store it, and add the metadata information for this inventory entry
