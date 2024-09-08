@@ -8,7 +8,7 @@ RUN pacman -Syu --noconfirm && \
 
 WORKDIR /build
 
-COPY arch_provisioning_key.pub /root/.ssh/authorized_keys
+COPY provisioning_key.pub /root/.ssh/authorized_keys
 
 RUN chmod 600 /root/.ssh/authorized_keys && \
     chmod 700 /root/.ssh

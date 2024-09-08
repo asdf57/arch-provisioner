@@ -27,8 +27,11 @@ cp ${SSH_KEY_SOURCE} ${SSH_KEY_DEST}
 chmod 600 ${SSH_KEY_DEST}
 chmod 700 /archlive/releng/airootfs/root/.ssh
 
-echo "- Adding disable for SSH password authentication in the live environment"
+echo "- Adding disable for SSH password authentication and MaxAuthTries increase in the live environment"
+
 echo "PasswordAuthentication no" >> \
+    /archlive/releng/airootfs/etc/ssh/sshd_config
+echo "MaxAuthTries 90" >> \
     /archlive/releng/airootfs/etc/ssh/sshd_config
 
 echo "- Creating profile.d directory in the live environment"
