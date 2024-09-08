@@ -1,9 +1,2 @@
-arch:
-  private_ssh_key: "arch_provisioning_key"
-  public_ssh_key: "arch_provisioning_key.pub"
-ubuntu:
-  private_ssh_key: "ubuntu_provisioning_key"
-  public_ssh_key: "ubuntu_provisioning_key.pub"
-debian:
-  private_ssh_key: "debian_provisioning_key"
-  public_ssh_key: "debian_provisioning_key.pub"
+private_ssh_key: "provisioning_key"
+public_ssh_key: "provisioning_key.pub"
