@@ -27,13 +27,27 @@
   ansible.builtin.shell:
     cmd: "timedatectl set-ntp true"
 
-- name: Check that NTP is enabled
-  ansible.builtin.shell:
-    cmd: "timedatectl status | grep 'clock synchronized: yes'"
-  register: time_sync_check
-  retries: 5
-  delay: 5
-  until: time_sync_check.rc == 0
+- name: Wait for NTP to synchronize
+  block:
+    - name: Check that NTP is enabled
+      ansible.builtin.shell:
+        cmd: "timedatectl status | grep 'clock synchronized: yes'"
+      register: time_sync_check
+      retries: 5
+      delay: 5
+      until: time_sync_check.rc == 0
+  rescue:
+    - name: Disable NTP
+      ansible.builtin.shell:
+        cmd: "timedatectl set-ntp false"
+    - name: Enable NTP
+      ansible.builtin.shell:
+        cmd: "timedatectl set-ntp true"
+    - name: Fail if clock is not synchronized
+      fail:
+        msg: "Clock is not synchronized"
+      when: time_sync_check.rc != 0
+
 
 - name: Fail if clock is not synchronized
   fail:

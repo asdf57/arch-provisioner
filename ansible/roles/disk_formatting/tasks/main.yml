@@ -4,10 +4,10 @@
     dev: "{{ disk_device }}{{ efi_partition_number }}"
 
 - name: Check if swap is already enabled
-  ansible.builtin.shell:
-    cmd: "swapon --show=NAME | grep -w '{{ disk_device }}{{ swap_partition_number }}'"
+  ansible.builtin.shell: "swapon --show=NAME | grep -w '{{ disk_device }}{{ swap_partition_number }}'"
   register: swap_status
-  ignore_errors: true
+  changed_when: false
+  failed_when: swap_status.rc not in [0, 1]
 
 - name: Format the swap partition
   ansible.builtin.command:

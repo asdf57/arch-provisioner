@@ -18,11 +18,11 @@
     state: mounted
     fstype: vfat
 
-# - name: Mount additional partitions (if defined)
-#   ansible.posix.mount:
-#     src: "{{ disk_device }}{{ item.number }}"
-#     path: /mnt
-#     state: mounted
-#     fstype: "{{ general_partitions[0].fs }}"
-#   loop: "{{ general_partitions[1:] }}"
-#   when: general_partitions | length > 0
+- name: Mount additional partitions (if defined)
+  ansible.posix.mount:
+    src: "{{ disk_device }}{{ item.number }}"
+    path: "/mnt/data{{ item.number }}"
+    state: mounted
+    fstype: "{{ item.fs }}"
+  loop: "{{ general_partitions[1:] }}"
+  when: general_partitions | length > 0

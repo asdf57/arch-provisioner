@@ -86,19 +86,26 @@
   ansible.builtin.shell:
     cmd: "arch-chroot /mnt echo 'root:{{ root_password }}' | chpasswd"
 
-- name: Setup users
+- name: Setup users in chroot
   block:
-    - name: Setup users
-      ansible.builtin.user:
-        name: "{{ item.username }}"
-        password: "{{ item.password }}"
-        shell: "{{ item.shell }}"
-        state: present
-        create_home: yes
-        groups: "{{ item.groups | join(',') }}"
-        append: yes
+    - name: Check if users exist
+      ansible.builtin.shell: |
+        arch-chroot /mnt id -u "{{ item.username }}"
+      changed_when: false
       loop: "{{ users }}"
-      when: item.groups is defined and item.groups | length > 0
+      register: user_exists
+      failed_when: user_exists.rc not in [0, 1]
+      no_log: true
+
+    - name: print user_exists
+      ansible.builtin.debug:
+        var: user_exists
+
+    - name: Create users that do not exist
+      ansible.builtin.shell: |
+        echo "{{ item.item.password }}" | arch-chroot /mnt useradd -m -p "$(openssl passwd -6 -stdin)" -s "{{ item.item.shell }}" -G "{{ item.item.groups | join(',') }}" "{{ item.item.username }}"
+      when: item.rc == 1
+      loop: "{{ user_exists.results }}"
       no_log: true
 
 - name: Install and configure sudo
@@ -108,8 +115,27 @@
         cmd: "arch-chroot /mnt pacman -S --noconfirm sudo"
 
     - name: Add wheel group to sudoers
+      ansible.builtin.lineinfile:
+        path: /mnt/etc/sudoers
+        regexp: '^# %wheel\s+ALL=\(ALL\)\s+ALL'
+        line: '%wheel ALL=(ALL) ALL'
+        state: present
+        validate: 'visudo -cf %s'
+      become: true
+
+- name: Install and configure sshd
+  block:
+    - name: Install openssh
       ansible.builtin.shell:
-        cmd: "arch-chroot /mnt sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /etc/sudoers"
+        cmd: "arch-chroot /mnt pacman -S --noconfirm openssh"
+
+    - name: Enable sshd
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt systemctl enable sshd"
+
+    - name: Start sshd
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt systemctl start sshd"
 
 - name: Configure the bootloader
   block:
@@ -131,26 +157,6 @@
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg"
 
-- name: Install and setup essential packages
-  block:
-    - name: Install essential packages
-      ansible.builtin.command:
-        cmd: "arch-chroot /mnt pacman -S --noconfirm networkmanager"
-      when: packages is defined and packages | length > 0
-
-    - name: Enable NetworkManager
-      ansible.builtin.shell:
-        cmd: "arch-chroot /mnt systemctl enable NetworkManager"
-
-# - name: Install packages
-#   ansible.builtin.shell:
-#     cmd: "arch-chroot /mnt pacman -S --noconfirm {{ packages | join(' ') }}"
-#   when: packages is defined and packages | length > 0
-
-# - name: Reload systemd daemons
-#   ansible.builtin.shell:
-#     cmd: "arch-chroot /mnt systemctl daemon-reload"
-
 - name: Add public SSH key to root's authorized_keys
   ansible.builtin.lineinfile:
     path: /mnt/root/.ssh/authorized_keys
@@ -161,3 +167,8 @@
     group: root
     state: present
     insertafter: EOF
+
+# - name: Reboot the system
+#   ansible.builtin.reboot:
+#     reboot_timeout: 600
+#   become: yes
