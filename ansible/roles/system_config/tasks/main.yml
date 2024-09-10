@@ -84,7 +84,8 @@
 
 - name: Set the root password
   ansible.builtin.shell:
-    cmd: "arch-chroot /mnt echo 'root:{{ root_password }}' | chpasswd"
+    cmd: |
+      arch-chroot /mnt bash -c "echo 'root:{{ root_password }}' | chpasswd"
 
 - name: Setup users in chroot
   block:
@@ -96,10 +97,6 @@
       register: user_exists
       failed_when: user_exists.rc not in [0, 1]
       no_log: true
-
-    - name: print user_exists
-      ansible.builtin.debug:
-        var: user_exists
 
     - name: Create users that do not exist
       ansible.builtin.shell: |
@@ -157,6 +154,20 @@
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg"
 
+- name: Install required packages
+  block:
+    - name: Install packages
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt pacman -S --noconfirm networkmanager python"
+
+    - name: Enable NetworkManager
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt systemctl enable NetworkManager"
+
+    - name: Start NetworkManager
+      ansible.builtin.shell:
+        cmd: "arch-chroot /mnt systemctl start NetworkManager"
+
 - name: Add public SSH key to root's authorized_keys
   ansible.builtin.lineinfile:
     path: /mnt/root/.ssh/authorized_keys
@@ -168,7 +179,18 @@
     state: present
     insertafter: EOF
 
-# - name: Reboot the system
-#   ansible.builtin.reboot:
-#     reboot_timeout: 600
-#   become: yes
+- name: Add provisioning key to root's authorized_keys
+  ansible.builtin.lineinfile:
+    path: /mnt/root/.ssh/authorized_keys
+    line: "{{ lookup('file', '/home/condor/.ssh/provisioning_key.pub') }}"
+    create: yes
+    mode: '0600'
+    owner: root
+    group: root
+    state: present
+    insertafter: EOF
+
+- name: Reboot the system
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+  become: yes

@@ -35,6 +35,10 @@ type BuildIsoCommand struct {
 	PublicSSHKey string `short:"s" description:"Public SSH key to use for provisioning" default:"provisioning_key.pub"`
 }
 
+type RunCommand struct {
+	GIT_SSH_KEY string `short:"g" long:"git-key" description:"Environment variable containing the SSH key to use for Git" required:"false" default:"PROVISIONER_GIT_SSH_KEY"`
+}
+
 type BuildCommand struct {
 }
 
@@ -46,4 +50,5 @@ type Options struct {
 	Start    StartCommand    `command:"start" description:"Start the hss docker container"`
 	BuildIso BuildIsoCommand `command:"buildiso" description:"Build an ISO"`
 	Build    BuildCommand    `command:"build" description:"Build the hss docker container"`
+	Run      RunCommand      `command:"run" description:"Run the hss docker container"`
 }

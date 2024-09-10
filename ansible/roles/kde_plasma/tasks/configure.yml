@@ -1,10 +1,10 @@
-- name: Ensure SDDM theme is configured
-  command: sddm --example-config > /etc/sddm.conf
+- name: Move SDDM theme into /etc/sddm.conf
+  copy: src=/home/condor/dotfiles/sddm/sddm.conf dest=/etc/sddm.conf
   when: install_sddm
 
-- name: Customize SDDM configuration
-  lineinfile:
-    path: /etc/sddm.conf
-    regexp: '^#Theme='
-    line: 'Theme=archlinux-simplyblack'
-  when: install_sddm
+# - name: Customize SDDM configuration
+#   lineinfile:
+#     path: /etc/sddm.conf
+#     regexp: '^#Theme='
+#     line: 'Theme=archlinux-simplyblack'
+#   when: install_sddm

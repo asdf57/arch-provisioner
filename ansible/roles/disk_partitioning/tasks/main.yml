@@ -1,6 +1,4 @@
-- name: "Wipe disk"
-  include_tasks: wipe.yml
+- import_tasks: wipe.yml
+  when: wipe_disk | bool
 
-- name: "Provision disk"
-  include_tasks: provision.yml
-  
+- import_tasks: provision.yml

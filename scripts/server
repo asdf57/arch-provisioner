@@ -16,6 +16,7 @@ if __name__ == "__main__":
     provision_parser.add_argument("-s", "--schema", required=True, help="Path to the schema file")
     provision_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
     provision_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
+    provision_parser.add_argument("-w", "--wipe", action="store_true", help="Wipe the disk before provisioning")
 
     wipe_parser = subparsers.add_parser("wipe", help="Wipes the partitions on the target machine")
     wipe_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
@@ -39,6 +40,7 @@ if __name__ == "__main__":
                     '-e', f'{serialized_config}',
                     '-e', f'ansible_port={serialized_config["ansible"]["port"]}',
                     '-e', f'ansible_user={serialized_config["ansible"]["user"]}',
+                    '-e', f'wipe_disk={"yes" if args.wipe else "no"}',
                     '-l', args.limit,
                     '--private-key=/home/condor/.ssh/provisioning_key',
                     serialized_config['ansible']['playbook']

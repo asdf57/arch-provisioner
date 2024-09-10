@@ -34,6 +34,8 @@ func (b *BuildCommand) Execute(args []string) error {
 
 	//Copy the private provisioning key the ssh_keys directory
 	copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", liveConfig.PrivateSSHKey), "ssh_keys/"+"provisioning_key")
+	copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", liveConfig.PublicSSHKey), "ssh_keys/"+"provisioning_key.pub")
+	copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", "git_provisioning_key"), "ssh_keys/"+"git_provisioning_key")
 
 	//Build the HSS Docker container
 	runCommand("docker build -t hss .", "..")

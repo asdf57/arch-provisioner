@@ -29,6 +29,7 @@ func runCommand(command string, dir string) {
 		cmd.Dir = dir
 	}
 
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
