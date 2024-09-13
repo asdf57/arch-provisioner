@@ -1,2 +1,21 @@
 public_key_path: "id_macmini.pub"
 private_key_path: "id_macmini"
+
+hypr:
+  monitors:
+    - name: DP-1
+      resolution: 1920x1080@165
+      position: 0x0
+      scale: 1
+  misc:
+    disable_hyprland_logo: true
+    force_default_wallpaper: -1
+    disable_splash_rendering: false
+    mouse_move_enables_dpms: false
+    always_follow_on_dnd: true
+    layers_hog_keyboard_focus: true
+    animate_manual_resizes: false
+    disable_autoreload: false
+    enable_swallow: false
+    focus_on_activate: true
+    no_direct_scanout: false
