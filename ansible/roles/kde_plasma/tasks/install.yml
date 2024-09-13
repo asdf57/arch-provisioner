@@ -1,5 +1,3 @@
-# tasks/install.yml
-
 - name: Install Xorg packages
   pacman:
     name: "{{ xorg_packages }}"
