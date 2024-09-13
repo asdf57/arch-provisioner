@@ -49,5 +49,5 @@
             "shell": "/bin/bash"
         }
     ],
-    "role_packages": ["kde_plasma"]
+    "role_packages": ["hypr", "kde_plasma"]
 }
