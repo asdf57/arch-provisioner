@@ -87,6 +87,18 @@
     cmd: |
       arch-chroot /mnt bash -c "echo 'root:{{ root_password }}' | chpasswd"
 
+- name: Add files and dirs to be copied to all created users
+  block:
+    - name: Copy dotfiles to /etc/skel
+      ansible.builtin.copy:
+        src: /home/condor/dotfiles
+        dest: /mnt/etc/skel/.config
+        owner: root
+        group: root
+        mode: '0755'
+        force: yes
+        backup: yes
+
 - name: Setup users in chroot
   block:
     - name: Check if users exist
