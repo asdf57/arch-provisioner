@@ -15,14 +15,23 @@ if __name__ == "__main__":
     provision_parser = subparsers.add_parser("provision", help="Runs OS provisioning")
     provision_parser.add_argument("-s", "--schema", required=True, help="Path to the schema file")
     provision_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
-    provision_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
+    provision_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts", default="all")
     provision_parser.add_argument("-w", "--wipe", action="store_true", help="Wipe the disk before provisioning")
 
     wipe_parser = subparsers.add_parser("wipe", help="Wipes the partitions on the target machine")
     wipe_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
-    wipe_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
+    wipe_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts", default="all")
     wipe_parser.add_argument("-d", "--disk-device", required=True, help="Disk device to wipe")
     wipe_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
+    wipe_parser.add_argument("-p", "--port", required=False, help="SSH port to use", default="22")
+
+    cmd_parser = subparsers.add_parser("cmd", help="Run a custom command on the target machine")
+    cmd_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
+    cmd_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
+    cmd_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
+    cmd_parser.add_argument("-p", "--port", required=False, help="SSH port to use", default="22")
+    cmd_parser.add_argument("shell_command", nargs=argparse.REMAINDER, help="Command to run on the target machine")
+
 
     args = parser.parse_args()
 
@@ -54,11 +63,26 @@ if __name__ == "__main__":
         ansible_command = [
             'ansible-playbook',
             '-i', args.inventory,
+            '-e', f'ansible_port={args.port}',
             '-e', f'disk_device={args.disk_device}',
             '-e', f'ansible_user={args.ansible_user}',
             '-l', args.limit,
             '--private-key=/home/condor/.ssh/provisioning_key',
             'ansible/plays/wipe.yml'
+        ]
+
+        subprocess.run(ansible_command, check=True)
+    elif args.command == "cmd":
+        print("Running custom command on the target machine")
+
+        ansible_command = [
+            'ansible',
+            '-i', args.inventory,
+            '-e', f'ansible_port={args.port}',
+            '-e', f'ansible_user={args.ansible_user}',
+            '--private-key=/home/condor/.ssh/provisioning_key',
+            args.limit,
+            '-a', ' '.join(args.shell_command),
         ]
 
         subprocess.run(ansible_command, check=True)
