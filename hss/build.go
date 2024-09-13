@@ -38,7 +38,7 @@ func (b *BuildCommand) Execute(args []string) error {
 	copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", "git_provisioning_key"), "ssh_keys/"+"git_provisioning_key")
 
 	//Build the HSS Docker container
-	runCommand("docker build -t hss .", "..")
+	runCommand("docker build --platform linux/amd64 -t hss .", "..")
 
 	os.RemoveAll("ssh_keys")
 
