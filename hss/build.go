@@ -22,7 +22,7 @@ func (b *BuildCommand) Execute(args []string) error {
 	//Grab the public and private keys from the host_vars directory for each host
 	for hostName := range config.Servers.Hosts {
 		var hostVars HostVars
-		hostVarsFilePath, _ := filepath.Abs(fmt.Sprintf("../ansible/host_vars/%s.yml", hostName))
+		hostVarsFilePath, _ := filepath.Abs(fmt.Sprintf("../ansible/inventory/host_vars/%s.yml", hostName))
 		parseYamlFile(hostVarsFilePath, &hostVars)
 
 		copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", hostVars.PublicKeyPath), "ssh_keys/"+hostName+"_public_key.pub")
