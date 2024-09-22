@@ -1,7 +1,7 @@
 ---
 - name: Mount primary root partition to /mnt
   ansible.posix.mount:
-    src: "{{ disk_device }}{{ general_partitions[0].number }}"
+    src: "{{ partition_base }}{{ general_partitions[0].number }}"
     path: /mnt
     state: mounted
     fstype: "{{ general_partitions[0].fs }}"
@@ -13,14 +13,14 @@
 
 - name: Mount the EFI partition to /boot/efi
   ansible.posix.mount:
-    src: "{{ disk_device }}{{ efi_partition_number }}"
+    src: "{{ partition_base }}{{ efi_partition_number }}"
     path: /mnt/boot/efi
     state: mounted
     fstype: vfat
 
 - name: Mount additional partitions (if defined)
   ansible.posix.mount:
-    src: "{{ disk_device }}{{ item.number }}"
+    src: "{{ partition_base }}{{ item.number }}"
     path: "/mnt/data{{ item.number }}"
     state: mounted
     fstype: "{{ item.fs }}"
