@@ -2,7 +2,6 @@ ansible:
   port: 22
   user: root
   playbook: ansible/plays/provision.yml
-
 disk:
   device: /dev/mmcblk0
   size: 29.12GiB
@@ -23,11 +22,9 @@ disk:
       number: 3
       unit: GiB
       fs: ext4
-
 root_password: password
 hostname: my-server
 locale: en_US.UTF-8
-
 users:
   - username: user1
     password: password1
@@ -43,7 +40,6 @@ users:
     groups:
       - wheel
     shell: /bin/bash
-
 role_packages:
   - kde_plasma
   - hypr
