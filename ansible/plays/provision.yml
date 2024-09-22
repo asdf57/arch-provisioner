@@ -3,14 +3,14 @@
   become: yes
   pre_tasks:
     - name: Check if running in Arch Linux live environment
-      ansible.builtin.stat:
-        path: /run/archiso/bootmnt
+      shell: grep -q 'archiso' /proc/cmdline
       register: arch_live_check
+      ignore_errors: yes
 
     - name: Fail if not in live Arch ISO environment
       fail:
         msg: "This playbook can only be run in the live Arch ISO environment!"
-      when: not arch_live_check.stat.exists
+      when: arch_live_check.rc != 0
 
     - name: Set efi_partition and swap_partition
       set_fact:
@@ -54,6 +54,14 @@
         general_partitions: "{{ disk.partitions | selectattr('type', 'equalto', 'general') | list }}"
         users: "{{ users | default([]) | list }}"
         role_packages: "{{ role_packages | default([]) | list }}"
+
+    - name: Set the partition_base
+      set_fact:
+        partition_base: "{{ disk_device + 'p' if disk_device | regex_search('\\d$') else disk_device }}"
+
+    - name: Print partition_base
+      debug:
+        msg: "Partition base is {{ partition_base }}"
 
   tasks:
     - name: Include pre_install role
