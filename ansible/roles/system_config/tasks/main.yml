@@ -89,10 +89,31 @@
 
 - name: Add files and dirs to be copied to all created users
   block:
+    - name: Select all template dotfiles
+      ansible.builtin.find:
+        paths: /home/condor/dotfiles
+        recurse: yes
+        patterns: "*.j2"
+        file_type: file
+      register: templated_dotfiles
+      delegate_to: localhost
+
+    - name: Template dotfiles
+      ansible.builtin.template:
+        src: "{{ item.path }}"
+        dest: "{{ item.path | regex_replace('\\.j2$', '') }}"
+        owner: root
+        group: root
+        mode: '0755'
+        force: yes
+        backup: yes
+      loop: "{{ templated_dotfiles.files }}"
+      delegate_to: localhost
+
     - name: Copy dotfiles to /etc/skel
       ansible.builtin.copy:
-        src: /home/condor/dotfiles
-        dest: /mnt/etc/skel/.config
+        src: /home/condor/dotfiles/
+        dest: /mnt/etc/skel/.config/
         owner: root
         group: root
         mode: '0755'
