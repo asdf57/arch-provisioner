@@ -5,6 +5,8 @@ import json
 import argparse
 import subprocess
 
+import yaml
+
 from utils.schema import Config
 
 
@@ -39,7 +41,13 @@ if __name__ == "__main__":
         print(f"Provisioning OS using schema {args.schema}")
         try:
             with open(args.schema, "r") as f:
-                schema = json.load(f)
+                if f.name.endswith(".json"):
+                    schema = json.load(f)
+                elif f.name.endswith(".yml"):
+                    schema = yaml.safe_load(f)
+                else:
+                    raise ValueError("Unsupported schema file format")
+
                 config = Config(**schema)
                 serialized_config = config.model_dump(mode="json")
 
