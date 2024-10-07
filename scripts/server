@@ -9,38 +9,14 @@ import yaml
 
 from utils.schema import Config
 
+def get_schemas(args):
+    hosts = []
+    schemas_dict = {}
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Provisioner CLI tool")
-
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    provision_parser = subparsers.add_parser("provision", help="Runs OS provisioning")
-    provision_parser.add_argument("-s", "--schema", required=True, help="Path to the schema file")
-    provision_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
-    provision_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts", default="all")
-    provision_parser.add_argument("-w", "--wipe", action="store_true", help="Wipe the disk before provisioning")
-
-    wipe_parser = subparsers.add_parser("wipe", help="Wipes the partitions on the target machine")
-    wipe_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
-    wipe_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts", default="all")
-    wipe_parser.add_argument("-d", "--disk-device", required=True, help="Disk device to wipe")
-    wipe_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
-    wipe_parser.add_argument("-p", "--port", required=False, help="SSH port to use", default="22")
-
-    cmd_parser = subparsers.add_parser("cmd", help="Run a custom command on the target machine")
-    cmd_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
-    cmd_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
-    cmd_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
-    cmd_parser.add_argument("-p", "--port", required=False, help="SSH port to use", default="22")
-    cmd_parser.add_argument("shell_command", nargs=argparse.REMAINDER, help="Command to run on the target machine")
-
-
-    args = parser.parse_args()
-
-    if args.command == "provision":
-        print(f"Provisioning OS using schema {args.schema}")
-        try:
-            with open(args.schema, "r") as f:
+    try:
+        for schema_pair in args.schema_pairs:
+            host, schema = schema_pair.split(":")
+            with open(schema, "r") as f:
                 if f.name.endswith(".json"):
                     schema = json.load(f)
                 elif f.name.endswith(".yml"):
@@ -51,27 +27,71 @@ if __name__ == "__main__":
                 config = Config(**schema)
                 serialized_config = config.model_dump(mode="json")
 
-                ansible_command = [
-                    'ansible-playbook',
-                    '-i', args.inventory,
-                    '-e', f'{serialized_config}',
-                    '-e', f'ansible_port={serialized_config["ansible"]["port"]}',
-                    '-e', f'ansible_user={serialized_config["ansible"]["user"]}',
-                    '-e', f'wipe_disk={"yes" if args.wipe else "no"}',
-                    '-l', args.limit,
-                    '--private-key=/home/condor/.ssh/provisioning_key',
-                    serialized_config['ansible']['playbook']
-                ]
+                hosts.append(host)
+                schemas_dict.update({host: serialized_config})
 
-                subprocess.run(ansible_command, check=True)
-        except Exception as e:
-            print(f"Error: {e}")
+        schemas_dict = {"schemas": schemas_dict}
+        return hosts, schemas_dict
+    except Exception as e:
+        print(f"Error: {e}")
+        raise e
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Provisioner CLI tool")
+
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    provision_parser = subparsers.add_parser("provision", help="Runs OS provisioning")
+    provision_parser.add_argument("-s", "--schema-pairs", required=True, help="Inventory, schema pairs", nargs="+")
+    provision_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
+    provision_parser.add_argument("-w", "--wipe", action="store_true", help="Wipe the disk before provisioning")
+    provision_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
+    provision_parser.add_argument("-p", "--ipxe", action="store_true", help="Boot back to iPXE after provisioning")
+
+    wipe_parser = subparsers.add_parser("wipe", help="Wipes the partitions on the target machine")
+    wipe_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
+    wipe_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts", default="all")
+    wipe_parser.add_argument("-d", "--disk-device", required=True, help="Disk device to wipe")
+    wipe_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
+
+    cmd_parser = subparsers.add_parser("cmd", help="Run a custom command on the target machine")
+    cmd_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
+    cmd_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts")
+    cmd_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
+    cmd_parser.add_argument("shell_command", nargs=argparse.REMAINDER, help="Command to run on the target machine")
+
+    ipxe_parser = subparsers.add_parser("ipxe", help="Boot back to iPXE")
+    ipxe_parser.add_argument("-i", "--inventory", required=False, help="Path to the inventory file", default="/home/condor/provision/ansible/inventory/inventory.yml")
+    ipxe_parser.add_argument("-l", "--limit", required=False, help="Limit the playbook run to specific hosts", default="all")
+    ipxe_parser.add_argument("-u", "--ansible-user", required=False, help="Ansible user to use", default="root")
+
+    args = parser.parse_args()
+
+    if args.command == "provision":
+        hosts, schemas = get_schemas(args)
+
+        print(schemas)
+
+        playbook = "ansible/plays/provision.yml"
+        if args.ipxe:
+            playbook = "ansible/plays/ipxe_provision.yml"
+
+        ansible_command = [
+            'ansible-playbook',
+            '-i', args.inventory,
+            '-e', f'{schemas}',
+            '-e', f'ansible_user={args.ansible_user}',
+            '-e', f'wipe_disk={"yes" if args.wipe else "no"}',
+            '-l', f'{",".join(hosts) + ","}',
+            '--private-key=/home/condor/.ssh/provisioning_key',
+            playbook
+        ]
+
+        subprocess.run(ansible_command, check=True)
     elif args.command == "wipe":
         print("Wiping partitions on the target machine")
         ansible_command = [
             'ansible-playbook',
             '-i', args.inventory,
-            '-e', f'ansible_port={args.port}',
             '-e', f'disk_device={args.disk_device}',
             '-e', f'ansible_user={args.ansible_user}',
             '-l', args.limit,
@@ -86,12 +106,26 @@ if __name__ == "__main__":
         ansible_command = [
             'ansible',
             '-i', args.inventory,
-            '-e', f'ansible_port={args.port}',
             '-e', f'ansible_user={args.ansible_user}',
             '--private-key=/home/condor/.ssh/provisioning_key',
             args.limit,
             '-a', ' '.join(args.shell_command),
         ]
+
+        subprocess.run(ansible_command, check=True)
+    elif args.command == "ipxe":
+        print("Booting back to iPXE")
+
+        ansible_command = [
+            'ansible',
+            '-i', args.inventory,
+            '-e', f'ansible_user={args.ansible_user}',
+            '--private-key=/home/condor/.ssh/provisioning_key',
+            args.limit,
+            '-m', 'shell',
+            '-a', 'for iface in $(ls /sys/class/net/); do ethtool -s "$iface" wol g 2>/dev/null; done && grub-reboot "Network Boot (iPXE)" && reboot',
+        ]
+
 
         subprocess.run(ansible_command, check=True)
     else:
