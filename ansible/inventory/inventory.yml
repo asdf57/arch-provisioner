@@ -2,7 +2,13 @@ servers:
   hosts:
     desktop:
       ansible_host: 192.168.1.49
+      ansible_port: 60022
     macmini:
-      ansible_host: 192.168.1.43
+      ansible_host: 192.168.1.91
+      ansible_port: 22
     zima:
       ansible_host: 192.168.1.84
+      ansible_port: 22
+    beelink:
+      ansible_host: 192.168.1.75
+      ansible_port: 22
