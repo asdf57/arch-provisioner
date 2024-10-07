@@ -2,15 +2,24 @@
   hosts: all
   become: yes
   pre_tasks:
-    - name: Check if running in Arch Linux live environment
-      shell: grep -q 'archiso' /proc/cmdline
-      register: arch_live_check
-      ignore_errors: yes
+    # - name: Check if running in Arch Linux live environment
+    #   shell: grep -q 'archiso' /proc/cmdline
+    #   register: arch_live_check
+    #   ignore_errors: yes
 
-    - name: Fail if not in live Arch ISO environment
-      fail:
-        msg: "This playbook can only be run in the live Arch ISO environment!"
-      when: arch_live_check.rc != 0
+    # - name: Fail if not in live Arch ISO environment
+    #   fail:
+    #     msg: "This playbook can only be run in the live Arch ISO environment!"
+    #   when: arch_live_check.rc != 0
+
+    - name: Extract schema for host
+      set_fact:
+        disk: "{{ schemas[inventory_hostname].disk }}"
+        root_password: "{{ schemas[inventory_hostname].root_password }}"
+        hostname: "{{ schemas[inventory_hostname].hostname }}"
+        locale: "{{ schemas[inventory_hostname].locale }}"
+        users: "{{ schemas[inventory_hostname].users }}"
+        role_packages: "{{ schemas[inventory_hostname].role_packages }}"
 
     - name: Set efi_partition and swap_partition
       set_fact:
@@ -54,6 +63,7 @@
         general_partitions: "{{ disk.partitions | selectattr('type', 'equalto', 'general') | list }}"
         users: "{{ users | default([]) | list }}"
         role_packages: "{{ role_packages | default([]) | list }}"
+        packages: "{{ packages | default([]) | list }}"
 
     - name: Set the partition_base
       set_fact:

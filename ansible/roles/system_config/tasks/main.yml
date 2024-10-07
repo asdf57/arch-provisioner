@@ -183,6 +183,32 @@
         msg: "Failed to install GRUB bootloader"
       when: grub_install.rc != 0
 
+    - name: Setup iPXE for GRUB
+      block:
+        - name: Create iPXE directory
+          ansible.builtin.file:
+            path: /mnt/boot/ipxe
+            state: directory
+            mode: '0755'
+
+        - name: Download iPXE efi binary
+          ansible.builtin.get_url:
+            url: https://boot.ipxe.org/ipxe.efi
+            dest: /mnt/boot/ipxe/ipxe.efi
+
+        - name: Add PXE boot entry
+          ansible.builtin.blockinfile:
+            path: /mnt/etc/grub.d/40_custom
+            block: |
+              menuentry 'Network Boot (iPXE)' {
+                  search --no-floppy --set=root --file /boot/ipxe/ipxe.efi
+                  chainloader /boot/ipxe/ipxe.efi
+              }
+            create: yes
+            mode: '0755'
+            owner: root
+            group: root
+
     - name: Generate GRUB configuration file
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg"
@@ -227,3 +253,9 @@
   ansible.builtin.reboot:
     reboot_timeout: 600
   become: yes
+
+- name: Install specified packages
+  community.general.pacman:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages }}"
