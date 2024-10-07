@@ -1,9 +1,4 @@
 {
-    "ansible": {
-        "port": 60022,
-        "user": "root",
-        "playbook": "ansible/plays/provision.yml"
-    },
     "disk": {
         "device": "/dev/vda",
         "size": "20GiB",

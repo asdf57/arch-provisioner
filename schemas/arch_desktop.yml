@@ -1,5 +1,5 @@
 disk:
-  device: /dev/sda
+  device: /dev/
   size: 931.51GiB
   partitions:
     - type: efi

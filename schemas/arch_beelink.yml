@@ -1,6 +1,6 @@
 disk:
   device: /dev/sda
-  size: 931.51GiB
+  size: 476.94GiB
   partitions:
     - type: efi
       start: 1MiB
@@ -18,11 +18,9 @@ disk:
       number: 3
       unit: GiB
       fs: ext4
-
 root_password: password
 hostname: my-server
 locale: en_US.UTF-8
-
 users:
   - username: user1
     password: password1
@@ -38,6 +36,8 @@ users:
     groups:
       - wheel
     shell: /bin/bash
-
 role_packages:
   - kde_plasma
+  - hypr
+packages:
+  - ethtool
