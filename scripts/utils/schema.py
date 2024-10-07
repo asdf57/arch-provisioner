@@ -364,6 +364,7 @@ class Config(BaseModel):
     locale: str
     users: Optional[List[User]] = None
     role_packages: List[str] = []
+    packages: List[str] = []
 
     @field_validator('root_password')
     def validate_root_password(cls, v):
@@ -393,6 +394,12 @@ class Config(BaseModel):
 
     @field_validator('role_packages')
     def validate_role_packages(cls, v):
+        if any(not pkg for pkg in v):
+            raise ValueError("Package names cannot be empty")
+        return v
+    
+    @field_validator('packages')
+    def validate_packages(cls, v):
         if any(not pkg for pkg in v):
             raise ValueError("Package names cannot be empty")
         return v
