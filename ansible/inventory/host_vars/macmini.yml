@@ -1,6 +1,8 @@
 public_key_path: "id_macmini.pub"
 private_key_path: "id_macmini"
 
+os: arch
+
 primary_interface: dummy
 
 interfaces:
