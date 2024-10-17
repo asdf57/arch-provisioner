@@ -1,6 +1,12 @@
 public_key_path: "id_macmini.pub"
 private_key_path: "id_macmini"
 
+primary_interface: dummy
+
+interfaces:
+  - name: dummy
+    mac: "dummy"
+
 hypr:
   variables:
     terminal: "kitty"

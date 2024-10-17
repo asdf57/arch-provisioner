@@ -1,6 +1,8 @@
 public_key_path: "id_beelink.pub"
 private_key_path: "id_beelink"
 
+os: arch
+
 hypr:
   variables:
     terminal: "kitty"

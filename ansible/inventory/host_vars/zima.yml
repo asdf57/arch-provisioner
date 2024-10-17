@@ -1,6 +1,16 @@
 public_key_path: "id_zima.pub"
 private_key_path: "id_zima"
 
+os: arch
+
+primary_interface: enp2s0
+
+interfaces:
+  - name: enp2s0
+    mac: "00:e0:4c:34:97:8f"
+  - name: enp3s0
+    mac: "00:e0:4c:34:97:90"
+
 hypr:
   variables:
     terminal: "kitty"

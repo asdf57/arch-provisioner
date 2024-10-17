@@ -1,0 +1,12 @@
+public_key_path: "id_rpi.pub"
+private_key_path: "id_rpi"
+
+os: debian
+
+primary_interface: eth0
+
+interfaces:
+  - name: eth0
+    mac: "b8:27:eb:3b:3e:7b"
+  - name: wlan0
+    mac: "b8:27:eb:3b:3e:7c"
