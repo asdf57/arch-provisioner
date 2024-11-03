@@ -1,4 +1,12 @@
 ---
+- name: Set chroot name fact (Arch Linux)
+  set_fact:
+    chroot_name: "arch-chroot"
+
+- name: Set chroot name fact (Debian)
+  set_fact:
+    chroot_name: "chroot"
+
 - name: Setup pacman keyring
   block:
     - name: Setup pacman keyring
@@ -6,6 +14,7 @@
 
     - name: Populate pacman keyring
       ansible.builtin.command: pacman-key --populate
+  when: ansible_distribution == 'Archlinux'
 
 - name: Rank Arch mirrors using reflector
   block:
@@ -14,15 +23,59 @@
         name:
           - reflector
         update_cache: yes
-
     - name: Search for the fastest mirrors supporting HTTPS
       ansible.builtin.shell: reflector --verbose --latest 10 --sort rate | awk -e '! /rsync/ {print}' > /etc/pacman.d/mirrorlist
+  when: ansible_distribution == 'Archlinux'
 
 - name: Install the base system
-  ansible.builtin.shell:
-    cmd: "pacstrap -K /mnt base linux linux-firmware"
-  args:
-    creates: /mnt/bin
+  block:
+    - name: Install the base system (Arch Linux)
+      ansible.builtin.shell:
+        cmd: "pacstrap -K /mnt base linux linux-firmware"
+      args:
+        creates: /mnt/bin
+      when: ansible_distribution == 'Archlinux'
+
+    - name: Install the base system (Debian)
+      ansible.builtin.shell:
+        cmd: "debootstrap --verbose {{ ansible_distribution_release }} /mnt http://deb.debian.org/debian/"
+      args:
+        creates: /mnt/bin
+      when: ansible_distribution == 'Debian'
+
+- name: Setup chroot mounts for Debian
+  block:
+    - name: Mount /dev
+      ansible.posix.mount:
+        src: /dev
+        path: /mnt/dev
+        state: mounted
+        opts: bind
+        fstype: none
+
+    - name: Mount /proc
+      ansible.posix.mount:
+        src: /proc
+        path: /mnt/proc
+        state: mounted
+        opts: bind
+        fstype: none
+
+    - name: Mount /sys
+      ansible.posix.mount:
+        src: /sys
+        path: /mnt/sys
+        state: mounted
+        opts: bind
+        fstype: none
+    
+    - name: Mount /run
+      ansible.posix.mount:
+        src: /run
+        path: /mnt/run
+        state: mounted
+        opts: bind
+        fstype: none
 
 - name: Setup fstab
   block:
@@ -34,11 +87,11 @@
 
 - name: Create symlink for timezone
   ansible.builtin.shell:
-    cmd: "arch-chroot /mnt ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime"
+    cmd: "{{ chroot_name }} /mnt ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime"
 
 - name: Set the hardware clock
   ansible.builtin.shell:
-    cmd: "arch-chroot /mnt hwclock --systohc"
+    cmd: "{{ chroot_name }} /mnt hwclock --systohc"
 
 - name: Setup locale
   block:
@@ -48,27 +101,34 @@
       regexp: "^#{{ locale }} UTF-8"
       line: "{{ locale }} UTF-8"
       state: present
+      create: true
+
+  - name: Install locales in chroot (Debian)
+    ansible.builtin.shell:
+      cmd: "chroot /mnt apt-get install -y locales"
+    when: ansible_distribution == 'Debian'
 
   - name: Create and set LANG in locale.conf
     block:
       - name: Create locale.conf
-        ansible.builtin.copy:
-          dest: /mnt/etc/locale.conf
-          content: 'LANG={{ locale }}'
-          force: no
+        ansible.builtin.lineinfile:
+          path: /mnt/etc/locale.conf
+          line: 'LANG={{ locale }}'
+          create: true
 
   - name: Generate locale
     ansible.builtin.shell:
-      cmd: "arch-chroot /mnt locale-gen"
+      cmd: "{{ chroot_name }} /mnt locale-gen"
 
 - name: Set the hostname
   ansible.builtin.lineinfile:
     path: /mnt/etc/hostname
-    line: "{ hostname }}"
+    line: "{{ hostname }}"
     create: yes
     mode: '0644'
     owner: root
     group: root
+    create: true
 
 - name: Set the hosts file
   ansible.builtin.blockinfile:
@@ -81,11 +141,14 @@
     owner: root
     group: root
     backup: yes
+    create: true
 
 - name: Set the root password
-  ansible.builtin.shell:
-    cmd: |
-      arch-chroot /mnt bash -c "echo 'root:{{ root_password }}' | chpasswd"
+  block:
+    - name: Set the root password (Arch Linux)
+      ansible.builtin.shell:
+        cmd: |
+          {{ chroot_name }} /mnt bash -c "echo 'root:{{ root_password }}' | chpasswd"
 
 - name: Add files and dirs to be copied to all created users
   block:
@@ -124,7 +187,7 @@
   block:
     - name: Check if users exist
       ansible.builtin.shell: |
-        arch-chroot /mnt id -u "{{ item.username }}"
+        {{ chroot_name }} /mnt id -u "{{ item.username }}"
       changed_when: false
       loop: "{{ users }}"
       register: user_exists
@@ -133,16 +196,22 @@
 
     - name: Create users that do not exist
       ansible.builtin.shell: |
-        echo "{{ item.item.password }}" | arch-chroot /mnt useradd -m -p "$(openssl passwd -6 -stdin)" -s "{{ item.item.shell }}" -G "{{ item.item.groups | join(',') }}" "{{ item.item.username }}"
+        echo "{{ item.item.password }}" | {{ chroot_name }} /mnt useradd -m -p "$(openssl passwd -6 -stdin)" -s "{{ item.item.shell }}" -G "{{ item.item.groups | join(',') }}" "{{ item.item.username }}"
       when: item.rc == 1
       loop: "{{ user_exists.results }}"
       no_log: true
 
 - name: Install and configure sudo
   block:
-    - name: Install sudo
+    - name: Install sudo (Arch)
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt pacman -S --noconfirm sudo"
+      when: ansible_distribution == 'Archlinux'
+    
+    - name: Install sudo (Debian)
+      ansible.builtin.shell:
+        cmd: "chroot /mnt apt-get install -y sudo"
+      when: ansible_distribution == 'Debian'
 
     - name: Add wheel group to sudoers
       ansible.builtin.lineinfile:
@@ -152,80 +221,115 @@
         state: present
         validate: 'visudo -cf %s'
       become: true
+      when: ansible_distribution == 'Archlinux'
 
 - name: Install and configure sshd
   block:
-    - name: Install openssh
+    - name: Install openssh (Arch)
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt pacman -S --noconfirm openssh"
+      when: ansible_distribution == 'Archlinux'
+
+    - name: Install openssh (Debian)
+      ansible.builtin.shell:
+        cmd: "chroot /mnt apt-get install -y openssh-server"
+      when: ansible_distribution == 'Debian'
 
     - name: Enable sshd
       ansible.builtin.shell:
-        cmd: "arch-chroot /mnt systemctl enable sshd"
-
-    - name: Start sshd
-      ansible.builtin.shell:
-        cmd: "arch-chroot /mnt systemctl start sshd"
+        cmd: "{{ chroot_name }} /mnt systemctl enable ssh"
 
 - name: Configure the bootloader
   block:
-    - name: Install bootloader related packages
+    - name: Install bootloader related packages on Arch
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt pacman -S --noconfirm grub efibootmgr dosfstools os-prober mtools"
+      become: true
+      when: ansible_facts['os_family'] == 'Archlinux'
 
-    - name: Run grub install command
+    - name: Install bootloader related packages on Debian
+      ansible.builtin.shell:
+        cmd: "chroot /mnt apt-get install -y grub-efi-amd64-bin grub-efi grub-pc-bin efibootmgr dosfstools os-prober mtools"
+      become: true
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Run grub install command on Arch
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub_uefi --recheck"
       register: grub_install
+      become: true
+      when: ansible_facts['os_family'] == 'Archlinux'
+
+    - name: Run grub install command on Debian
+      ansible.builtin.shell:
+        cmd: "chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=debian --recheck"
+      register: grub_install
+      become: true
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Fail if GRUB installation fails
       fail:
         msg: "Failed to install GRUB bootloader"
       when: grub_install.rc != 0
 
-    - name: Setup iPXE for GRUB
-      block:
-        - name: Create iPXE directory
-          ansible.builtin.file:
-            path: /mnt/boot/ipxe
-            state: directory
-            mode: '0755'
+    - name: Create iPXE directory
+      ansible.builtin.file:
+        path: /mnt/boot/ipxe
+        state: directory
+        mode: '0755'
 
-        - name: Download iPXE efi binary
-          ansible.builtin.get_url:
-            url: https://boot.ipxe.org/ipxe.efi
-            dest: /mnt/boot/ipxe/ipxe.efi
+    - name: Download iPXE efi binary
+      ansible.builtin.get_url:
+        url: https://boot.ipxe.org/ipxe.efi
+        dest: /mnt/boot/ipxe/ipxe.efi
 
-        - name: Add PXE boot entry
-          ansible.builtin.blockinfile:
-            path: /mnt/etc/grub.d/40_custom
-            block: |
-              menuentry 'Network Boot (iPXE)' {
-                  search --no-floppy --set=root --file /boot/ipxe/ipxe.efi
-                  chainloader /boot/ipxe/ipxe.efi
-              }
-            create: yes
-            mode: '0755'
-            owner: root
-            group: root
+    - name: Add PXE boot entry
+      ansible.builtin.blockinfile:
+        path: /mnt/etc/grub.d/40_custom
+        block: |
+          menuentry 'Network Boot (iPXE)' {
+              search --no-floppy --set=root --file /boot/ipxe/ipxe.efi
+              chainloader /boot/ipxe/ipxe.efi
+          }
+        create: yes
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Install kernel and initrd on Debian
+      ansible.builtin.shell:
+        cmd: "chroot /mnt apt install -y linux-image-amd64"
+      become: true
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Generate GRUB configuration file
       ansible.builtin.shell:
-        cmd: "arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg"
+        cmd: "{{ chroot_name }} /mnt grub-mkconfig -o /boot/grub/grub.cfg"
+      become: true
 
 - name: Install required packages
   block:
-    - name: Install packages
+    - name: Install packages on Arch
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt pacman -S --noconfirm networkmanager python"
+      become: true
+      when: ansible_facts['os_family'] == 'Archlinux'
+
+    - name: Install packages on Debian
+      ansible.builtin.shell:
+        cmd: "chroot /mnt apt-get install -y network-manager python3"
+      become: true
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Enable NetworkManager
       ansible.builtin.shell:
-        cmd: "arch-chroot /mnt systemctl enable NetworkManager"
+        cmd: "{{ chroot_name }} /mnt systemctl enable NetworkManager"
+      become: true
 
     - name: Start NetworkManager
       ansible.builtin.shell:
-        cmd: "arch-chroot /mnt systemctl start NetworkManager"
+        cmd: "{{ chroot_name }} /mnt systemctl start NetworkManager"
+      become: true
 
 - name: Add public SSH key to root's authorized_keys
   ansible.builtin.lineinfile:
@@ -254,8 +358,16 @@
     reboot_timeout: 600
   become: yes
 
-- name: Install specified packages
+- name: Install specified packages (Arch)
   community.general.pacman:
     name: "{{ item }}"
     state: present
   loop: "{{ packages }}"
+  when: ansible_distribution == 'Archlinux'
+
+- name: Install specified packages (Debian)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages }}"
+  when: ansible_distribution == 'Debian'
