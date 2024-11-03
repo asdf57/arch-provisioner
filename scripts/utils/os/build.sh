@@ -16,7 +16,7 @@ help_message="Usage: $0 [-h] [-o <output_dir>] [-v] <distro> [options]
     -h  Display this help message"
 
 readonly PROV_KEY_NAME="provisioning_key"
-readonly SUPPORTED_DISTROS=("arch")
+readonly SUPPORTED_DISTROS=("arch" "debian")
 
 distro=""
 output_dir="out"
@@ -97,6 +97,11 @@ function build() {
       echo "$distro_flags"
       docker build --no-cache --platform linux/amd64 -t arch-builder -f Dockerfile.arch .
       docker run --rm --platform linux/amd64 --privileged -e PARAMS="$distro_flags" -v $(pwd)/$OUTPUT_DIR:/output arch-builder
+      ;;
+
+    debian )
+      docker build --no-cache --platform linux/amd64 -t debian-builder -f Dockerfile.debian .
+      docker run --rm --platform linux/amd64 --privileged -v $(pwd)/$OUTPUT_DIR:/output debian-builder
       ;;
   esac
 
