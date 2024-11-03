@@ -1,4 +1,4 @@
-FROM python:alpine3.19 AS builder
+FROM python:3.12.7-alpine3.20 AS builder
 
 COPY requirements.txt .
 
@@ -19,7 +19,8 @@ RUN apk add --no-cache \
     cargo \
     ansible \
     vim \
-    yq
+    yq \
+    kubectl
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
