@@ -1,0 +1,8 @@
+- name: Install kube
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install kube
+      include_role:
+        name: kube
+        tasks_from: install

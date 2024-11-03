@@ -1,0 +1,11 @@
+---
+# defaults file for kube
+
+k3s_data_dir: /var/lib/rancher/k3s
+ghcr_username: "asdf57"
+required_packages_by_distro:
+  debian:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - kubectl
