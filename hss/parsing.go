@@ -1,17 +1,18 @@
 package main
 
+type Config struct {
+	All Hosts `yaml:"all"`
+}
+
+type Hosts struct {
+	Hosts map[string]Host `yaml:"hosts"`
+}
+
 type Host struct {
 	AnsibleHost string `yaml:"ansible_host"`
-}
-
-type Hosts map[string]Host
-
-type Servers struct {
-	Hosts Hosts `yaml:"hosts"`
-}
-
-type HostsConfig struct {
-	Servers Servers `yaml:"servers"`
+	AnsiblePort int    `yaml:"ansible_port"`
+	PrimaryMAC  string `yaml:"primary_mac"`
+	AnsibleUser string `yaml:"ansible_user"`
 }
 
 type HostVars struct {

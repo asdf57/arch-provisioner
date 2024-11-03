@@ -8,8 +8,11 @@ import (
 )
 
 func (b *BuildCommand) Execute(args []string) error {
-	var config HostsConfig
+	var config Config
 	parseYamlFile("../ansible/inventory/inventory.yml", &config)
+
+	//print config
+	fmt.Println(config)
 
 	//Check if temporary SSH directory needed for HSS build exists
 	if !isDirExists("ssh_keys") {
@@ -20,10 +23,12 @@ func (b *BuildCommand) Execute(args []string) error {
 	}
 
 	//Grab the public and private keys from the host_vars directory for each host
-	for hostName := range config.Servers.Hosts {
+	for hostName := range config.All.Hosts {
 		var hostVars HostVars
 		hostVarsFilePath, _ := filepath.Abs(fmt.Sprintf("../ansible/inventory/host_vars/%s.yml", hostName))
 		parseYamlFile(hostVarsFilePath, &hostVars)
+
+		fmt.Printf("[*] Copying SSH keys for %s\n", hostName)
 
 		copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", hostVars.PublicKeyPath), "ssh_keys/"+hostName+"_public_key.pub")
 		copyFile(filepath.Join(os.Getenv("HOME"), ".ssh", hostVars.PrivateKeyPath), "ssh_keys/"+hostName+"_private_key")
