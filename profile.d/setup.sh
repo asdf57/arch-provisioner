@@ -16,6 +16,8 @@ export PS1="[\u@\h]: "
 # Pull dotfiles from GitHub
 git clone git@github.com:asdf57/dotfiles.git /home/condor/dotfiles #>/dev/null 2>&1
 
+mkdir -p /home/condor/.kube
+ansible -b -i /home/condor/provision/ansible/inventory/inventory.yml -m fetch -a "src=/home/raspusr/.kube/config dest=/home/condor/.kube/config flat=yes" kube_coords[0]
 echo "======================="
 echo "      hss v0.1.0"
 echo -e "=======================\n"
