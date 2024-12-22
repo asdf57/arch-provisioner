@@ -207,7 +207,7 @@
       ansible.builtin.shell:
         cmd: "arch-chroot /mnt pacman -S --noconfirm sudo"
       when: ansible_distribution == 'Archlinux'
-    
+
     - name: Install sudo (Debian)
       ansible.builtin.shell:
         cmd: "chroot /mnt apt-get install -y sudo"
@@ -357,6 +357,11 @@
   ansible.builtin.reboot:
     reboot_timeout: 600
   become: yes
+
+- name: Install python
+  include_role:
+    name: python
+    tasks_from: install
 
 - name: Install specified packages (Arch)
   community.general.pacman:
