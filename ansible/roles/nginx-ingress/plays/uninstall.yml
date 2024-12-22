@@ -1,0 +1,7 @@
+- name: Uninstall nginx ingress
+  hosts: localhost
+  tasks:
+    - name: Uninstall nginx ingress
+      include_role:
+        name: nginx-ingress
+        tasks_from: uninstall

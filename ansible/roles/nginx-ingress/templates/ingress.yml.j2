@@ -1,0 +1,68 @@
+---
+# In grafana namespace
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: grafana
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-dns01-issuer
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: grafana.ryuugu.dev
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - grafana.ryuugu.dev
+    secretName: grafana-cert
+
+
+# ---
+# # In default namespace
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: harbor-ingress
+#   namespace: harbor
+#   annotations:
+#     cert-manager.io/cluster-issuer: letsencrypt-dns01-issuer
+# spec:
+#   ingressClassName: nginx
+#   rules:
+#   - host: harbor.ryuugu.dev
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: harbor-core
+#             port:
+#               number: 80
+#       - path: /v2/
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: harbor-core
+#             port:
+#               number: 80
+#       - path: /api/
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: harbor-core
+#             port:
+#               number: 80
+#   tls:
+#   - hosts:
+#     - harbor.ryuugu.dev
+#     secretName: harbor-cert

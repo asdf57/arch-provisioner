@@ -1,0 +1,30 @@
+- name: Add nginx ingress helm repo
+  kubernetes.core.helm_repository:
+    name: ingress-nginx
+    repo_url: https://kubernetes.github.io/ingress-nginx
+    state: present
+
+- name: Templates the ingress.yml file
+  template:
+    src: ingress.yml.j2
+    dest: /tmp/ingress.yml
+
+- name: Templates the values.yml file
+  template:
+    src: values.yml.j2
+    dest: /tmp/values.yml
+
+- name: Install Nginx Ingress using Helm
+  kubernetes.core.helm:
+    name: nginx-ingress
+    chart_ref: "ingress-nginx/ingress-nginx"
+    release_namespace: ingress-nginx
+    wait: true
+    create_namespace: true
+    values_files:
+      - /tmp/values.yml
+
+- name: Apply the ingress.yml file
+  kubernetes.core.k8s:
+    src: /tmp/ingress.yml
+    state: present

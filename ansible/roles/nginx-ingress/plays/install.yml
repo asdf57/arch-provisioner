@@ -1,0 +1,7 @@
+- name: Install nginx ingress
+  hosts: localhost
+  tasks:
+    - name: Install nginx ingress
+      include_role:
+        name: nginx-ingress
+        tasks_from: install
