@@ -5,6 +5,8 @@ os: arch
 
 primary_interface: enp6s0
 
+k3s_data_dir: /var/lib/rancher/k3s
+
 interfaces:
   - name: enp6s0
     mac: "58:11:22:19:87:78"

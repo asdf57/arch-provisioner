@@ -5,6 +5,8 @@ os: arch
 
 primary_interface: dummy
 
+k3s_data_dir: /var/lib/rancher/k3s
+
 interfaces:
   - name: dummy
     mac: "dummy"

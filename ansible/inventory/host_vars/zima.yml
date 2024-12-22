@@ -1,7 +1,9 @@
 public_key_path: "id_zima.pub"
 private_key_path: "id_zima"
 
-os: arch
+os: debian
+
+k3s_data_dir: /var/lib/rancher/k3s
 
 primary_interface: enp2s0
 

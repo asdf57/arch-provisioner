@@ -1,9 +1,11 @@
 public_key_path: "id_beelink.pub"
 private_key_path: "id_beelink"
 
-os: arch
+os: debian
 
 primary_interface: enp1s0
+
+k3s_data_dir: /var/lib/rancher/k3s
 
 hypr:
   variables:
