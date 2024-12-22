@@ -1,0 +1,8 @@
+namespaces:
+  - name: "default"
+  - name: "kube-system"
+  - name: "infra"
+  - name: "network"
+
+dnsmasq_ip: "10.1.1.10"
+sot_dns_server: "{{ dnsmasq_ip }}"
