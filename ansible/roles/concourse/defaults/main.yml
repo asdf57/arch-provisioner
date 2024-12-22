@@ -1,0 +1,6 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for concourse
+concourse_api_metallb_ip: 10.1.1.6
+concourse_worker_gateway_metallb_ip: 10.1.1.7
+concourse_prometheus_metallb_ip: 10.1.1.8
