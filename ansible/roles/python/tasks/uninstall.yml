@@ -1,0 +1,13 @@
+---
+- name: Check if python already installed
+  ansible.builtin.stat:
+    name: "/{{ ansible_user }}/.pyenv/versions/{{ python_version }}"
+  register: python_installed
+
+- name: Uninstall Python
+  block:
+  - name: Uninstall python using pyenv
+    ansible.builtin.command:
+      cmd: "/home/{{ ansible_user }}/.pyenv/bin/pyenv uninstall -f {{ python_version }}"
+      creates: "/home/{{ ansible_user }}/.pyenv/versions/{{ python_version }}"
+    when: python_installed.stat.exists

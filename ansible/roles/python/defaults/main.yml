@@ -1,0 +1,30 @@
+---
+python_version: "3.12.6"
+python_checksum: "cb669514937d3e894e74081627722aa5"
+pyenv_version: "v2.4.19"
+
+force_install: false
+
+required_packages_by_distro:
+  debian:
+    - build-essential
+    - libssl-dev
+    - zlib1g-dev
+    - libbz2-dev
+    - libreadline-dev
+    - libsqlite3-dev
+    - curl
+    - git
+    - libncursesw5-dev
+    - xz-utils
+    - tk-dev
+    - libxml2-dev
+    - libxmlsec1-dev
+    - libffi-dev
+    - liblzma-dev
+
+pip_packages:
+  - packaging
+  - kubernetes
+  - ansible
+  - cryptography

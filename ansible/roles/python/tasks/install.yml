@@ -1,0 +1,40 @@
+---
+- name: Install required packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ required_packages_by_distro[ansible_facts['distribution'] | lower] }}"
+
+- name: Clone pyenv repository
+  ansible.builtin.git:
+    repo: "https://github.com/pyenv/pyenv.git"
+    dest: "/home/{{ ansible_user }}/.pyenv"
+    version: "{{ pyenv_version }}"
+
+- name: Check if python already installed
+  ansible.builtin.stat:
+    name: "/{{ ansible_user }}/.pyenv/versions/{{ python_version }}"
+  register: python_installed
+
+- name: Install Python
+  block:
+  - name: Install python using pyenv
+    ansible.builtin.command:
+      cmd: "/home/{{ ansible_user }}/.pyenv/bin/pyenv install {{ python_version }}"
+      creates: "/home/{{ ansible_user }}/.pyenv/versions/{{ python_version }}"
+
+  - name: Install packaging pip package
+    ansible.builtin.shell:
+      cmd: "/{{ ansible_user }}/.pyenv/versions/{{ python_version }}/bin/pip3 install packaging"
+    vars:
+      ansible_python_interpreter: "/{{ ansible_user }}/.pyenv/versions/{{ python_version }}/bin/python3"
+    tags: install_packages
+
+  - name: Install pip packages
+    ansible.builtin.pip:
+      name: "{{ item }}"
+      executable: "/{{ ansible_user }}/.pyenv/versions/{{ python_version }}/bin/pip3"
+    loop: "{{ pip_packages }}"
+    vars:
+      ansible_python_interpreter: "/{{ ansible_user }}/.pyenv/versions/{{ python_version }}/bin/python3"
+  when: not python_installed.stat.exists or force_install | bool
