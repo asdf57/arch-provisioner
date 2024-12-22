@@ -8,10 +8,10 @@ After=network-online.target
 WantedBy=multi-user.target
 
 [Service]
-Type=${SYSTEMD_TYPE}
+Type=notify
 EnvironmentFile=-/etc/default/%N
 EnvironmentFile=-/etc/sysconfig/%N
-EnvironmentFile=-{{FILE_K3S_ENV}}
+EnvironmentFile=-/etc/systemd/system/k3s-agent.service.env
 KillMode=process
 Delegate=yes
 LimitNOFILE=1048576
@@ -21,8 +21,7 @@ TasksMax=infinity
 TimeoutStartSec=0
 Restart=always
 RestartSec=5s
-ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
+ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service'
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart={{ BIN_DIR }}/k3s \\
-    {{ CMD_K3S_EXEC }}
+ExecStart=/usr/local/bin/k3s {{ k3s_args }}
