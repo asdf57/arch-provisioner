@@ -1,7 +1,7 @@
 ---
 # defaults file for kube
+ansible_python_interpreter: "/{{ ansible_user }}/.pyenv/versions/3.12.6/bin/python3"
 
-k3s_data_dir: /var/lib/rancher/k3s
 ghcr_username: "asdf57"
 required_packages_by_distro:
   debian:
@@ -9,3 +9,5 @@ required_packages_by_distro:
     - ca-certificates
     - curl
     - kubectl
+
+k3s_version: "v1.31.2+k3s1"
