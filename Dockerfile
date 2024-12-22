@@ -20,10 +20,11 @@ RUN apk add --no-cache \
     ansible \
     vim \
     yq \
-    kubectl
+    kubectl \
+    helm
 
 RUN pip3 install --upgrade pip
-RUN pip3 install -r requirements.txt
+RUN pip3 install --prefix=/usr/local --no-warn-script-location -r requirements.txt
 
 ENV PATH="$PATH:/usr/local/bin"
 
