@@ -2,16 +2,6 @@
   hosts: all
   become: yes
   pre_tasks:
-    # - name: Check if running in Arch Linux live environment
-    #   shell: grep -q 'archiso' /proc/cmdline
-    #   register: arch_live_check
-    #   ignore_errors: yes
-
-    # - name: Fail if not in live Arch ISO environment
-    #   fail:
-    #     msg: "This playbook can only be run in the live Arch ISO environment!"
-    #   when: arch_live_check.rc != 0
-
     - name: Extract schema for host
       set_fact:
         disk: "{{ schemas[inventory_hostname].disk }}"
