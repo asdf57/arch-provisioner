@@ -1,0 +1,90 @@
+public_key_path: "{{ public_key_path }}"
+private_key_path: "{{ private_key_path }}"
+
+os: "{{ os }}"
+
+primary_interface: "{{ primary_interface }}"
+
+k3s_data_dir: "{{ k3s_data_dir }}"
+
+hypr:
+  variables:
+    terminal: "{{ hypr.variables.terminal }}"
+    fileManager: "{{ hypr.variables.fileManager }}"
+    menu: "{{ hypr.variables.menu }}"
+    mainMod: "{{ hypr.variables.mainMod }}"
+    brightness: "{{ hypr.variables.brightness }}"
+    volume: "{{ hypr.variables.volume }}"
+  monitors:
+    {% for monitor in hypr.monitors %}
+    - name: "{{ monitor.name }}"
+      resolution: "{{ monitor.resolution }}"
+      position: "{{ monitor.position }}"
+      scale: {{ monitor.scale }}
+    {% endfor %}
+  autostart:
+    {% for autostart_item in hypr.autostart %}
+    - "{{ autostart_item }}"
+    {% endfor %}
+  env:
+    {% for key, value in hypr.env.items() %}
+    {{ key }}: "{{ value }}"
+    {% endfor %}
+  general:
+    {% for key, value in hypr.general.items() %}
+    {{ key }}: "{{ value }}"
+    {% endfor %}
+  decoration:
+    {% for key, value in hypr.decoration.items() %}
+    {{ key }}: "{{ value }}"
+    {% endfor %}
+  animations:
+    enabled: "{{ hypr.animations.enabled }}"
+    bezier: "{{ hypr.animations.bezier }}"
+    animation:
+      {% for anim in hypr.animations.animation %}
+      - "{{ anim }}"
+      {% endfor %}
+  dwindle:
+    {% for key, value in hypr.dwindle.items() %}
+    {{ key }}: "{{ value }}"
+    {% endfor %}
+  master:
+    new_status: "{{ hypr.master.new_status }}"
+  input:
+    kb_layout: "{{ hypr.input.kb_layout }}"
+    kb_variant: "{{ hypr.input.kb_variant }}"
+    kb_model: "{{ hypr.input.kb_model }}"
+    kb_options: "{{ hypr.input.kb_options }}"
+    kb_rules: "{{ hypr.input.kb_rules }}"
+    follow_mouse: {{ hypr.input.follow_mouse }}
+    sensitivity: {{ hypr.input.sensitivity }}
+    touchpad:
+      {% for key, value in hypr.input.touchpad.items() %}
+      {{ key }}: "{{ value }}"
+      {% endfor %}
+  gestures:
+    workspace_swipe: "{{ hypr.gestures.workspace_swipe }}"
+  device:
+    name: "{{ hypr.device.name }}"
+    sensitivity: {{ hypr.device.sensitivity }}
+  bind:
+    {% for bind in hypr.bind %}
+    - "{{ bind }}"
+    {% endfor %}
+  bindm:
+    {% for bindm_item in hypr.bindm %}
+    - "{{ bindm_item }}"
+    {% endfor %}
+  windowrule:
+    {% for rule in hypr.windowrule %}
+    - "{{ rule }}"
+    {% endfor %}
+  windowrulev2:
+    {% for rule in hypr.windowrulev2 %}
+    - "{{ rule }}"
+    {% endfor %}
+  misc:
+    {% for key, value in hypr.misc.items() %}
+    {{ key }}: "{{ value }}"
+    {% endfor %}
