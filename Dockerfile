@@ -21,7 +21,8 @@ RUN apk add --no-cache \
     vim \
     yq \
     kubectl \
-    helm
+    helm \
+    jq
 
 RUN pip3 install --upgrade pip
 RUN pip3 install --prefix=/usr/local --no-warn-script-location -r requirements.txt
