@@ -1,0 +1,8 @@
+port=0
+dhcp-range={{ ansible_default_ipv4.address }},proxy
+pxe-service=X86-64_EFI, "Boot From Network, (UEFI)", grubx64.efi
+log-queries
+log-dhcp
+log-facility=-
+enable-tftp
+tftp-root=/tftp

@@ -1,0 +1,11 @@
+server {
+    listen 80;
+    server_name localhost;
+
+    root /www/data;
+
+    location / {
+        autoindex on;
+        try_files $uri $uri/ =404;
+    }
+}

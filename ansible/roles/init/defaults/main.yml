@@ -1,0 +1,23 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for init
+
+git_ssh_key_path: "/Users/matt/.ssh/git_provisioning_key"
+provisioning_ssh_key_path: "/Users/matt/.ssh/provisioning_key"
+provisioning_api_repo: "git@github.com:asdf57/provisioning-server.git"
+provisioning_api_ipv4: "10.2.0.2"
+inventory_repo: "git@github.com:asdf57/inventory.git"
+provisioning_api_version: "main"
+inventory_version: "main"
+ipvlan_interface: "eth0"
+ipvlan_subnet: "192.168.1.0/24"
+ipvlan_gateway: "192.168.1.1"
+ipvlan_mode: "l2"
+dhcp_range: ""
+cloudflare_domain: "ryuugu.dev"
+cloudflare_api_key: "REDACTED"
+cloudflare_email: "REDACTED"
+zerossl_email: "REDACTED"
+zerossl_eab_kid: "REDACTED"
+zerossl_eab_hmac_key: "REDACTED"
+cert_authority: "zerossl"

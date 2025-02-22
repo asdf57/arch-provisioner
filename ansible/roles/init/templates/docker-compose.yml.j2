@@ -1,0 +1,78 @@
+version: '3.4'
+services:
+  http:
+    build: ./provisioning-api
+    ports:
+      - "3000:3000"
+    secrets:
+      - git_provisioning_key
+
+  nginx:
+    build: ./nginx
+    networks:
+      ipvlan_net:
+        ipv4_address: 192.168.1.123
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "{{ role_path }}/files/nginx/default.conf:/etc/nginx/conf.d/default.conf"
+      - "{{ role_path }}/files/ftp:/www/data"
+    restart: always
+    labels:
+      - sh.acme.autoload.domain={{ cloudflare_domain }}
+
+  dnsmasq:
+    build: ./dnsmasq
+    network_mode: host
+    volumes:
+      - dnsmasq-config:/etc/dnsmasq
+    depends_on:
+      - nginx
+    restart: always
+
+  acme:
+    image: neilpang/acme.sh
+    container_name: acme
+    network_mode: host
+    environment:
+      - CF_Token="{{ cloudflare_api_key }}"
+      - CF_Email="{{ cloudflare_email }}"
+      - DEPLOY_DOCKER_CONTAINER_LABEL=sh.acme.autoload.domain={{ cloudflare_domain }}
+      - DEPLOY_DOCKER_CONTAINER_KEY_FILE=/etc/nginx/ssl/{{ cloudflare_domain }}/key.pem
+      - DEPLOY_DOCKER_CONTAINER_CERT_FILE=/etc/nginx/ssl/{{ cloudflare_domain }}/cert.pem
+      - DEPLOY_DOCKER_CONTAINER_CA_FILE=/etc/nginx/ssl/{{ cloudflare_domain }}/ca.pem
+      - DEPLOY_DOCKER_CONTAINER_FULLCHAIN_FILE=/etc/nginx/ssl/{{ cloudflare_domain }}/full.pem
+      - DEPLOY_DOCKER_CONTAINER_RELOAD_CMD="nginx -s reload"
+      - ACME_DOMAIN={{ cloudflare_domain }}
+      - ACME_SERVER={{ cert_authority }}
+      - ZEROSSL_EAB_KID={{ zerossl_eab_kid }}
+      - ZEROSSL_EAB_HMAC_KEY={{ zerossl_eab_hmac_key }}
+      - ZEROSSL_EMAIL={{ zerossl_email }}
+      - DNS_API=dns_cf
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - "{{ role_path }}/files/acme/entrypoint.sh:/entrypoint.sh:ro"
+      - ${ACME_HOME_DIR:-./acme.sh}:/acme.sh
+    command: sh ./entrypoint.sh
+    restart: always
+
+secrets:
+  git_provisioning_key:
+    file: "{{ git_ssh_key_path }}"
+
+volumes:
+  nginx-config:
+  certs:
+  dnsmasq-config:
+
+networks:
+  ipvlan_net:
+    driver: ipvlan
+    driver_opts:
+      mode: "{{ ipvlan_mode }}"
+      parent: "{{ ipvlan_interface }}"
+    ipam:
+      config:
+        - subnet: "{{ ipvlan_subnet }}"
+          gateway: "{{ ipvlan_gateway }}"
