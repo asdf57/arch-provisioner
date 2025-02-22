@@ -1,0 +1,7 @@
+- name: Initialize the cluster
+  hosts: localhost
+  tasks:
+    - name: Run
+      include_role:
+        name: init
+        tasks_from: main
