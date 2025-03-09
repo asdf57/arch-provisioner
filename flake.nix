@@ -17,10 +17,10 @@
           packages = [
             ansible
             ansible-lint
-            bmake
-            diffutils
             docker
             docker-compose
+            bmake
+            diffutils
             dyff
             git
             go
@@ -51,6 +51,7 @@
               netaddr
               pexpect
               rich
+              hvac
             ]))
           ];
         };
