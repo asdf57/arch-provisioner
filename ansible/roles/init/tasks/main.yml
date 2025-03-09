@@ -1,18 +1,5 @@
 ---
-
-# Let's setup the 
-
 # provisioning API, nginx reverse proxy, create cert, ipxe
-
-- name: Create git id25519 SSH key
-  community.crypto.openssh_keypair:
-    path: "{{ git_ssh_key_path }}"
-    type: "ed25519"
-
-- name: Create provisioning id25519 SSH key
-  community.crypto.openssh_keypair:
-    path: "{{ provisioning_ssh_key_path }}"
-    type: "ed25519"
 
 - name: Template the docker-compose file
   template:
@@ -25,16 +12,6 @@
     dest: "{{ role_path }}/files/provisioning-api"
     version: "{{ provisioning_api_version }}"
     force: yes
-
-# - name: Build ISOs
-#   ansible.builtin.shell:
-#     cmd: |
-#       ./scripts/os/build.sh -o ../../out -p "{{ provisioning_ssh_key_path }}" {{ item }} -t netboot
-#   args:
-#     chdir: "../../"
-#   with_items:
-#     - debian
-#     - arch
 
 - name: Template dnsmasq.conf
   template:
@@ -51,6 +28,37 @@
 #     src: grub.cfg.j2
 #     dest: {{ role_path }}/files/nginx/grub.cfg
 
+- name: Setup nginx mounts
+  block:
+    - name: Create the files directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/nginx/files"
+        state: directory
+
+- name: Setup acme.sh mounts
+  block:
+    - name: Create the acme.sh directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/acme/acme.sh"
+        state: directory
+
+- name: Setup vault mounts
+  block:
+    - name: Create the internal directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/vault/internal"
+        state: directory
+
+- name: Download iPXE efi binary
+  ansible.builtin.get_url:
+    url: https://boot.ipxe.org/ipxe.efi
+    dest: "{{ role_path }}/files/nginx/files/ipxe.efi"
+
+- name: Download iPXE iso
+  ansible.builtin.get_url:
+    url: https://boot.ipxe.org/ipxe.iso
+    dest: "{{ role_path }}/files/nginx/files/ipxe.iso"
+
 - name: Delete the ipvlan network
   community.docker.docker_network:
     name: ipvlan
@@ -62,3 +70,78 @@
     project_src: "{{ role_path }}/files"
     state: present
     build: always
+  register: docker_compose_result
+  failed_when: docker_compose_result.failed
+  ignore_errors: true
+
+- name: Print Docker Compose error
+  debug:
+    msg: "{{ docker_compose_result.stderr | default('No error message available') }}"
+  when: docker_compose_result.failed
+
+- name: macvlan shim
+  block:
+    - name: Is the macvlan network already created?
+      ansible.builtin.command: ip link show macvlan0
+      register: macvlan_check
+      ignore_errors: true
+
+    - name: Create macvlan shim (linux only)
+      ansible.builtin.shell: |
+        ip link add macvlan0 link {{ interface }} type macvlan mode bridge
+        ip addr add {{ macvlan_subnet }} dev macvlan0
+        ip link set macvlan0 up
+      when: network_driver == "macvlan" and ansible_os_family not in ["Darwin", "Windows"] and macvlan_check.rc != 0
+      become: true
+
+- name: Wait for the vault root password file to generate
+  ansible.builtin.wait_for:
+    path: "{{ role_path }}/files/vault/internal/root_token"
+    state: present
+    timeout: 120
+
+- name: Set the vault root password
+  ansible.builtin.set_fact:
+    vault_root_password: "{{ lookup('file', '{{ role_path }}/files/vault/internal/root_token') }}"
+
+- name: Print the vault root password
+  debug:
+    msg: "{{ vault_root_password }}"
+
+- name: Create git id25519 SSH key
+  community.crypto.openssh_keypair:
+    path: "{{ git_ssh_key_path }}"
+    type: "ed25519"
+
+- name: Create provisioning id25519 SSH key
+  community.crypto.openssh_keypair:
+    path: "{{ provisioning_ssh_key_path }}"
+    type: "ed25519"
+
+- name: Upload the provisioning private SSH key vault
+  community.hashi_vault.vault_write:
+    url: "https://vault.ryuugu.dev"
+    path: "kv2/provisioning/ssh-key/public"
+    data:
+      key: "{{ lookup('file', '{{ provisioning_ssh_key_path }}.pub') }}"
+    token: "{{ vault_root_password }}"
+    validate_certs: true
+
+- name: Upload the provisioning private SSH key vault
+  community.hashi_vault.vault_write:
+    url: "https://vault.ryuugu.dev"
+    path: "kv2/provisioning/ssh-key/private"
+    data:
+      key: "{{ lookup('file', '{{ provisioning_ssh_key_path }}') }}"
+    token: "{{ vault_root_password }}"
+    validate_certs: true
+
+# - name: Build ISOs
+#   ansible.builtin.shell:
+#     cmd: |
+#       ./scripts/os/build.sh -o ../../out -p "{{ provisioning_ssh_key_path }}" {{ item }} -t netboot
+#   args:
+#     chdir: "../../"
+#   with_items:
+#     - debian
+#     - arch
