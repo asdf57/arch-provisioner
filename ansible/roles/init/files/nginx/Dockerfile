@@ -1,4 +1,6 @@
-FROM nginx:latest
+FROM openresty/openresty:alpine-fat
+
+RUN /usr/local/openresty/luajit/bin/luarocks install lua-resty-http
 
 COPY entrypoint.sh /entrypoint.sh
 COPY default.conf /etc/nginx/conf.d/default.conf
