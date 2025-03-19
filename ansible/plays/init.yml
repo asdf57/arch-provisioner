@@ -1,7 +1,17 @@
 - name: Initialize the cluster
   hosts: localhost
   tasks:
+    - name: Clean up
+      import_role:
+        name: init
+        tasks_from: clean
+      become: true
+      tags: 
+        - clean
+
     - name: Run
-      include_role:
+      import_role:
         name: init
         tasks_from: main
+      tags: 
+        - build
