@@ -31,4 +31,6 @@ acme.sh --deploy -d "${ACME_DOMAIN}" --deploy-hook docker
 echo 'Listing certs'
 acme.sh --list
 
+touch /done
+
 crond -n -s -m off
