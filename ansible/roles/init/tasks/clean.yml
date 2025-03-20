@@ -1,0 +1,61 @@
+- name: Bring down the docker compose stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ role_path }}/files"
+    project_name: infra
+    state: absent
+    remove_volumes: yes
+    remove_images: all
+    remove_orphans: yes
+
+- name: Cleanup acme files
+  block:
+    - name: Delete the acme.sh directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/acme/acme.sh"
+        state: absent
+
+- name: Cleanup the nginx files
+  block:
+    - name: Delete the files directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/nginx/files"
+        state: absent
+
+    - name: Remove the templated default.conf
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/nginx/default.conf"
+        state: absent
+
+- name: Cleanup the vault files
+  block:
+    - name: Delete the vault internal directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/vault/internal"
+        state: absent
+
+    - name: Delete the vault logs directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/vault/logs"
+        state: absent
+
+    - name: Delete the vault secrets directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/vault/secrets"
+        state: absent
+
+    - name: Delete the vault vault_stuff directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/vault/vault_stuff"
+        state: absent
+
+- name: Cleanup the provisioning-api
+  block:
+    - name: Delete the provisioning-api directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/provisioning-api"
+        state: absent
+
+- name: Delete the docker-compose.yml file
+  ansible.builtin.file:
+    path: "{{ role_path }}/files/docker-compose.yml"
+    state: absent
