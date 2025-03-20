@@ -68,6 +68,7 @@
 - name: Build the docker-compose
   community.docker.docker_compose_v2:
     project_src: "{{ role_path }}/files"
+    project_name: infra
     state: present
     build: always
   register: docker_compose_result
@@ -78,6 +79,12 @@
   debug:
     msg: "{{ docker_compose_result.stderr | default('No error message available') }}"
   when: docker_compose_result.failed
+
+- name: Wait for the acme.sh container to become healthy
+  shell: "{% raw %}docker inspect --format='{{.State.Health.Status}}' acme{% endraw %}"
+  register: acme_health
+  until: acme_health.stdout == "healthy"
+  retries: 1000
 
 - name: macvlan shim
   block:
@@ -96,13 +103,13 @@
 
 - name: Wait for the vault root password file to generate
   ansible.builtin.wait_for:
-    path: "{{ role_path }}/files/vault/internal/root_token"
+    path: "{{ role_path }}/files/vault/vault_stuff/stuff/root_token"
     state: present
     timeout: 120
 
 - name: Set the vault root password
   ansible.builtin.set_fact:
-    vault_root_password: "{{ lookup('file', '{{ role_path }}/files/vault/internal/root_token') }}"
+    vault_root_password: "{{ lookup('file', '{{ role_path }}/files/vault/vault_stuff/stuff/root_token') }}"
 
 - name: Print the vault root password
   debug:
@@ -118,7 +125,7 @@
     path: "{{ provisioning_ssh_key_path }}"
     type: "ed25519"
 
-- name: Upload the provisioning private SSH key vault
+- name: Upload the provisioning public SSH key to vault
   community.hashi_vault.vault_write:
     url: "https://vault.ryuugu.dev"
     path: "kv2/provisioning/ssh-key/public"
@@ -126,6 +133,8 @@
       key: "{{ lookup('file', '{{ provisioning_ssh_key_path }}.pub') }}"
     token: "{{ vault_root_password }}"
     validate_certs: true
+  retries: 50
+  delay: 5
 
 - name: Upload the provisioning private SSH key vault
   community.hashi_vault.vault_write:
@@ -136,12 +145,42 @@
     token: "{{ vault_root_password }}"
     validate_certs: true
 
-# - name: Build ISOs
+- name: Initialize what to build tuple list
+  set_fact:
+    what_to_build: []
+
+- name: Get files in each build directory
+  include_tasks: build_boot_files.yml
+  with_nested:
+    - [arch, debian]
+    - [netboot, iso]
+
+- name: Here's what we need to build
+  debug:
+    var: what_to_build
+
+- name: Build ISOs in parallel
+  ansible.builtin.shell:
+    cmd: |
+      ./scripts/os/build.sh -o {{ role_path }}/files/nginx/files/{{ item[0] }}_{{ item[1] }} -p "{{ provisioning_ssh_key_path }}" {{ item[0] }} -t {{ item[1] }}
+    chdir: "../../"
+  loop: "{{ what_to_build }}"
+  async: 600
+  poll: 0
+  register: iso_build_jobs
+
+- name: Wait for ISO builds to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ iso_build_jobs.results }}"
+  register: job_result
+  until: job_result.finished 
+  retries: 500
+  delay: 10
+
+# - name: Build the hss image
 #   ansible.builtin.shell:
 #     cmd: |
-#       ./scripts/os/build.sh -o ../../out -p "{{ provisioning_ssh_key_path }}" {{ item }} -t netboot
-#   args:
-#     chdir: "../../"
-#   with_items:
-#     - debian
-#     - arch
+#       docker build -t hss:latest -f Dockerfile.hss .
+#     chdir: "{{ role_path }}/files/provisioning-api"
+#   register: hss_build
