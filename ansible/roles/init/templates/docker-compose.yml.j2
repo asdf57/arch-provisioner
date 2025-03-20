@@ -18,7 +18,12 @@ services:
       - IPC_LOCK
     restart: always
     volumes:
-      - "{{ role_path }}/files/vault/internal:/vault"
+      - "{{ role_path }}/files/vault/vault_stuff/internal:/vault/data"
+      - "{{ role_path }}/files/vault/vault_stuff/config:/vault/config"
+      - "{{ role_path }}/files/vault/vault_stuff/logs:/vault/logs"
+      - "{{ role_path }}/files/vault/vault_stuff/secrets:/vault/secrets"
+      - "{{ role_path }}/files/vault/vault_stuff/stuff:/stuff"
+
     environment:
       VAULT_ADDR: "http://127.0.0.1:8200"
       VAULT_API_ADDR: "http://vault:8200"
@@ -44,11 +49,11 @@ services:
   dnsmasq:
     build: ./dnsmasq
     network_mode: host
-    # volumes:
-    #   - dnsmasq-config:/etc/dnsmasq
     depends_on:
       - nginx
     restart: always
+    cap_add:
+      - NET_ADMIN
 
   acme:
     build: ./acme
@@ -69,6 +74,11 @@ services:
     restart: always
     depends_on:
       - nginx
+    healthcheck:
+      test: ["CMD", "test", "-f", "/done"]
+      interval: 10s
+      retries: 5000
+      start_period: 10s
 
 secrets:
   git_provisioning_key:
