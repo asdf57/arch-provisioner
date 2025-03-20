@@ -1,2 +1,0 @@
-private_ssh_key: "provisioning_key"
-public_ssh_key: "provisioning_key.pub"
