@@ -120,6 +120,7 @@ elif [[ $type == "iso-hybrid" ]]; then
 elif [[ $type == "netboot" ]]; then
   mv "tftpboot/live/vmlinuz" "$OUTPUT_DIR/vmlinuz"
   mv "tftpboot/live/initrd.img" "$OUTPUT_DIR/initrd.img"
+  mv "binary/live/filesystem.squashfs" "$OUTPUT_DIR/filesystem.squashfs"
   echo "=> Netboot files are available at $OUTPUT_DIR"
 elif [[ $type == "tar" ]]; then
   echo todo
