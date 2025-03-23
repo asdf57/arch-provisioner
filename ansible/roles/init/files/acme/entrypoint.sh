@@ -3,6 +3,8 @@
 if [ ! -f /acme.sh/account.conf ]; then
   echo "Initializing acme.sh"
 
+  acme.sh --upgrade
+
   if [[ "${ACME_SERVER}" == "zerossl" ]]; then
     echo "Registering account with zerossl"
       acme.sh --register-account --server zerossl \
