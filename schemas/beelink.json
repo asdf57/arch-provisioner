@@ -1,0 +1,49 @@
+{
+  "inventory": {
+    "host": "beelink",
+    "ip": "10.1.1.254",
+    "mac": "e8:ff:1e:d4:03:fa",
+    "os": "arch",
+    "node_type": "coords",
+    "family": "server",
+    "groups": [],
+    "port": 22,
+    "ansible_user": "root"
+  },
+  "storage": {
+    "disk_name": "/dev/sda",
+    "partitions": [
+      {
+        "partition_type": "primary",
+        "alloc_type": "size",
+        "size": 500,
+        "fs_type": "efi",
+        "flags": [
+          "boot",
+          "esp"
+        ]
+      },
+      {
+        "partition_type": "primary",
+        "alloc_type": "size",
+        "size": 2048,
+        "fs_type": "swap",
+        "flags": [
+          "swap"
+        ]
+      },
+      {
+        "partition_type": "primary",
+        "alloc_type": "percentage",
+        "size": 100,
+        "fs_type": "ext4",
+        "flags": [
+          "lvm"
+        ]
+      }
+    ]
+  },
+  "system": {
+    "os": "arch"
+  }
+}
