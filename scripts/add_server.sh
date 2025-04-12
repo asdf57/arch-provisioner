@@ -1,9 +1,13 @@
 
 #!/bin/bash
 
+set -euo pipefail
+
 # Initialize a server
 # Usage: ./add_server.sh <server schema file>
 # Example: ./add_server.sh beelink.json
+
+cd "$(dirname "$0")"
 
 function help() {
     echo "Usage: ./add_server.sh <server schema file>"
@@ -15,12 +19,18 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
-if [ ! -f "$1" ]; then
+if [ ! -f "../schemas/$1" ]; then
     echo "Schema file $1 not found!"
     exit 1
 fi
 
-response=$(curl -s -w "%{http_code}" -X POST -H "Content-Type: application/json" -d @$1 https://server-api.ryuugu.dev/entry)
+file_path="../schemas/$1"
+
+server_name=$(jq -r '.inventory.host' $file_path)
+
+echo "Found server with name: $server_name"
+
+response=$(curl -s -w "%{http_code}" -X POST -H "Content-Type: application/json" -d @$file_path https://server-api.ryuugu.dev/entry)
 http_code="${response: -3}"
 payload="${response%???}"
 
