@@ -1,4 +1,0 @@
-- import_tasks: wipe.yml
-  when: wipe_disk | bool
-
-- import_tasks: provision.yml

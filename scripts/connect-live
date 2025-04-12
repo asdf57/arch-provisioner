@@ -1,3 +1,0 @@
-#!/bin/bash
-
-ssh -i "$HOME/.ssh/provisioning_key" -o StrictHostKeyChecking=no root@$1
