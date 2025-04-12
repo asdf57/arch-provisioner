@@ -1,10 +1,60 @@
 services:
+  concourse-db:
+    container_name: concourse-db
+    image: postgres
+    environment:
+      POSTGRES_DB: concourse
+      POSTGRES_PASSWORD: concourse_pass
+      POSTGRES_USER: concourse_user
+      PGDATA: /database
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U concourse_user -d concourse"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    networks:
+      clusternet:
+        ipv4_address: "{{ concourse_db_ipv4 }}"
+
+  concourse:
+    container_name: concourse
+    image: concourse/concourse
+    command: quickstart
+    privileged: true
+    cgroup: host
+    depends_on:
+      concourse-db:
+        condition: service_healthy
+    ports: ["8080:8080"]
+    environment:
+      CONCOURSE_POSTGRES_HOST: concourse-db
+      CONCOURSE_POSTGRES_USER: concourse_user
+      CONCOURSE_POSTGRES_PASSWORD: concourse_pass
+      CONCOURSE_POSTGRES_DATABASE: concourse
+      CONCOURSE_EXTERNAL_URL: http://{{ concourse_ipv4 }}:8080
+      CONCOURSE_ADD_LOCAL_USER: test:test
+      CONCOURSE_MAIN_TEAM_LOCAL_USER: test
+      CONCOURSE_WORKER_BAGGAGECLAIM_DRIVER: overlay
+      CONCOURSE_CLIENT_SECRET: Y29uY291cnNlLXdlYgo=
+      CONCOURSE_TSA_CLIENT_SECRET: Y29uY291cnNlLXdvcmtlcgo=
+      CONCOURSE_X_FRAME_OPTIONS: allow
+      CONCOURSE_CONTENT_SECURITY_POLICY: "frame-ancestors *;"
+      CONCOURSE_CLUSTER_NAME: homelab
+      CONCOURSE_WORKER_CONTAINERD_DNS_SERVER: "8.8.8.8"
+      CONCOURSE_WORKER_RUNTIME: "containerd"
+    restart: always
+    networks:
+      clusternet:
+        ipv4_address: "{{ concourse_ipv4 }}"
+
   http:
     build: ./provisioning-api
     ports:
       - "3000:3000"
     secrets:
       - git_provisioning_key
+    restart: always
     networks:
       clusternet:
         ipv4_address: "{{ server_api_ipv4 }}"
