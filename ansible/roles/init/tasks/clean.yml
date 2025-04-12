@@ -1,3 +1,8 @@
+- name: Check if docker-compose file exists
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/docker-compose.yml"
+  register: docker_compose_file
+
 - name: Bring down the docker compose stack
   community.docker.docker_compose_v2:
     project_src: "{{ role_path }}/files"
@@ -6,6 +11,7 @@
     remove_volumes: yes
     remove_images: all
     remove_orphans: yes
+  when: docker_compose_file.stat.exists
 
 - name: Cleanup acme files
   block:
@@ -16,14 +22,27 @@
 
 - name: Cleanup the nginx files
   block:
-    - name: Delete the files directory
+    - name: Delete directories
       ansible.builtin.file:
-        path: "{{ role_path }}/files/nginx/files"
+        path: "{{ role_path }}/files/nginx/files/{{ item.0 }}_{{ item.1 }}"
         state: absent
+      with_nested:
+        - [arch, debian]
+        - [netboot, iso]
 
     - name: Remove the templated default.conf
       ansible.builtin.file:
-        path: "{{ role_path }}/files/nginx/default.conf"
+        path: "{{ role_path }}/files/nginx/files/default.conf"
+        state: absent
+
+    - name: Remove the ipxe.iso file
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/nginx/files/ipxe.iso"
+        state: absent
+
+    - name: Remove the ipxe.efi file
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/nginx/files/ipxe.efi"
         state: absent
 
 - name: Cleanup the vault files
