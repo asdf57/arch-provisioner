@@ -1,90 +1,25 @@
-- name: Arch Linux Pre-Installation
+- name: Provision
   hosts: all
-  become: yes
-  pre_tasks:
-    - name: Extract schema for host
-      set_fact:
-        disk: "{{ schemas[inventory_hostname].disk }}"
-        root_password: "{{ schemas[inventory_hostname].root_password }}"
-        hostname: "{{ schemas[inventory_hostname].hostname }}"
-        locale: "{{ schemas[inventory_hostname].locale }}"
-        users: "{{ schemas[inventory_hostname].users }}"
-        role_packages: "{{ schemas[inventory_hostname].role_packages }}"
-
-    - name: Set efi_partition and swap_partition
-      set_fact:
-        efi_partition: "{{ (disk.partitions | selectattr('type', 'equalto', 'efi') | first | default(None)) }}"
-        swap_partition: "{{ (disk.partitions | selectattr('type', 'equalto', 'swap') | first | default(None)) }}"
-
-    - name: Set efi_partition attributes
-      set_fact:
-        efi_partition_number: "{{ efi_partition.number | default('') }}"
-        efi_partition_align: "{{ efi_partition.align | default('') }}"
-        efi_partition_flags: "{{ efi_partition.flags | default('') }}"
-        efi_partition_fs: "{{ efi_partition.fs | default('') }}"
-        efi_partition_label: "{{ efi_partition.label | default('') }}"
-        efi_partition_name: "{{ efi_partition.name | default('') }}"
-        efi_partition_start: "{{ efi_partition.start | default('') }}"
-        efi_partition_end: "{{ efi_partition.end | default('') }}"
-        efi_partition_resize: "{{ efi_partition.resize | default('') }}"
-        efi_partition_state: "{{ efi_partition.state | default('') }}"
-        efi_partition_unit: "{{ efi_partition.unit | default('') }}"
-
-    - name: Set swap_partition attributes
-      set_fact:
-        has_swap_partition: "{{ swap_partition is not none }}"
-        swap_partition_number: "{{ swap_partition.number | default('') }}"
-        swap_partition_align: "{{ swap_partition.align | default('') }}"
-        swap_partition_flags: "{{ swap_partition.flags | default('') }}"
-        swap_partition_fs: "{{ swap_partition.fs | default('') }}"
-        swap_partition_label: "{{ swap_partition.label | default('') }}"
-        swap_partition_name: "{{ swap_partition.name | default('') }}"
-        swap_partition_start: "{{ swap_partition.start | default('') }}"
-        swap_partition_end: "{{ swap_partition.end | default('') }}"
-        swap_partition_resize: "{{ swap_partition.resize | default('') }}"
-        swap_partition_state: "{{ swap_partition.state | default('') }}"
-        swap_partition_unit: "{{ swap_partition.unit | default('') }}"
-
-    # Set General Variables
-    - name: Set general disk variables and other settings
-      set_fact:
-        disk_device: "{{ disk.device }}"
-        disk_size: "{{ disk.size }}"
-        general_partitions: "{{ disk.partitions | selectattr('type', 'equalto', 'general') | list }}"
-        users: "{{ users | default([]) | list }}"
-        role_packages: "{{ role_packages | default([]) | list }}"
-        packages: "{{ packages | default([]) | list }}"
-
-    - name: Set the partition_base
-      set_fact:
-        partition_base: "{{ disk_device + 'p' if disk_device | regex_search('\\d$') else disk_device }}"
-
-    - name: Print partition_base
-      debug:
-        msg: "Partition base is {{ partition_base }}"
-
+  vars:
+    ansible_python_interpreter: >-
+      {{ lookup('env', 'VENV_PYTHON') if inventory_hostname == 'localhost' else '/usr/bin/python3' }}
   tasks:
-    - name: Include pre_install role
+    - name: Perform prereqs
       include_role:
-        name: pre_install
+        name: provision
+        tasks_from: prereqs
 
-    - name: Include disk_partitioning role
+    - name: Wipe the disk
       include_role:
-        name: disk_partitioning
+        name: provision
+        tasks_from: wipe
 
-    - name: Include disk_formatting role
+    - name: Setup the disk
       include_role:
-        name: disk_formatting
+        name: provision
+        tasks_from: partition
 
-    - name: Include filesystem_mounting role
+    - name: Setup the system
       include_role:
-        name: filesystem_mounting
-
-    - name: Include system_config role
-      include_role:
-        name: system_config
-
-    - name: Install package roles
-      include_role:
-        name: "{{ item }}"
-      loop: "{{ role_packages }}"
+        name: provision
+        tasks_from: setup
