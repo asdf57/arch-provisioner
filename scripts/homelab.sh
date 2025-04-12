@@ -5,14 +5,14 @@
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 <init_full|init_build|init_clean|provision> <args>"
+    echo "Usage: $0 <init_full|init_build|init_cleanup|provision> <args>"
     exit 1
 fi
 
 command="$1"
 shift
 
-if [[ ! " init_full init_build provision " =~ " $command " ]]; then
+if [[ ! " init_full init_build init_cleanup provision " =~ " $command " ]]; then
     echo "Invalid command: $command"
     echo "Usage: $0 <init_full|init_build|provision>"
     exit 1
