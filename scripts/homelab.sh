@@ -12,7 +12,9 @@ fi
 command="$1"
 shift
 
-if [[ ! " init_full init_build init_cleanup provision " =~ " $command " ]]; then
+vault_root_password=$(cat ansible/roles/init/files/vault/vault_stuff/stuff/root_token)
+
+if [[ ! " init_full init_build init_cleanup provision provision_setup " =~ " $command " ]]; then
     echo "Invalid command: $command"
     echo "Usage: $0 <init_full|init_build|provision>"
     exit 1
@@ -33,11 +35,11 @@ case $command in
         ;;
     provision)
         echo "Running provision"
-        vault_root_password="$1"
-        if [[ -z "$vault_root_password" ]]; then
-            echo "Usage: $0 provision <vault_root_password>"
-            exit 1
-        fi
         ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml -e "vault_root_password=$vault_root_password"
         ;;
+    provision_setup)
+        echo "Running provision setup only"
+        ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml -e "vault_root_password=$vault_root_password" --tags setup
+        ;;
+
 esac
