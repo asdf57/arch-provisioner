@@ -18,15 +18,15 @@
     src: dnsmasq.conf.j2
     dest: "{{ role_path }}/files/dnsmasq/dnsmasq.conf"
 
+- name: Template the registry config
+  template:
+    src: config.yml.j2
+    dest: "{{ role_path }}/files/registry/config/config.yml"
+
 - name: Template nginx.conf
   template:
     src: default.conf.j2
     dest: "{{ role_path }}/files/nginx/default.conf"
-
-# - name: Template grub.cfg
-#   template:
-#     src: grub.cfg.j2
-#     dest: {{ role_path }}/files/nginx/grub.cfg
 
 - name: Setup nginx mounts
   block:
@@ -74,6 +74,8 @@
   register: docker_compose_result
   failed_when: docker_compose_result.failed
   ignore_errors: true
+  retries: 5
+  delay: 5
 
 - name: Print Docker Compose error
   debug:
@@ -125,10 +127,32 @@
     path: "{{ provisioning_ssh_key_path }}"
     type: "ed25519"
 
+- name: Upload the git public SSH key to vault
+  community.hashi_vault.vault_write:
+    url: "https://vault.ryuugu.dev"
+    path: "kv2/github/ssh/public"
+    data:
+      key: "{{ lookup('file', '{{ git_ssh_key_path }}.pub') }}"
+    token: "{{ vault_root_password }}"
+    validate_certs: true
+  retries: 50
+  delay: 5
+
+- name: Upload the git private SSH key to vault
+  community.hashi_vault.vault_write:
+    url: "https://vault.ryuugu.dev"
+    path: "kv2/github/ssh/private"
+    data:
+      key: "{{ lookup('file', '{{ git_ssh_key_path }}') }}"
+    token: "{{ vault_root_password }}"
+    validate_certs: true
+  retries: 50
+  delay: 5
+
 - name: Upload the provisioning public SSH key to vault
   community.hashi_vault.vault_write:
     url: "https://vault.ryuugu.dev"
-    path: "kv2/provisioning/ssh-key/public"
+    path: "kv2/provisioning/ssh/public"
     data:
       key: "{{ lookup('file', '{{ provisioning_ssh_key_path }}.pub') }}"
     token: "{{ vault_root_password }}"
@@ -139,7 +163,7 @@
 - name: Upload the provisioning private SSH key vault
   community.hashi_vault.vault_write:
     url: "https://vault.ryuugu.dev"
-    path: "kv2/provisioning/ssh-key/private"
+    path: "kv2/provisioning/ssh/private"
     data:
       key: "{{ lookup('file', '{{ provisioning_ssh_key_path }}') }}"
     token: "{{ vault_root_password }}"
@@ -177,6 +201,57 @@
   until: job_result.finished 
   retries: 500
   delay: 10
+
+# - name: Check if nebula CA private key exists in Vault
+#   community.hashi_vault.vault_read:
+#     url: "https://vault.ryuugu.dev"
+#     path: "kv2/nebula/ca/private_key"
+#     token: "{{ vault_root_password }}"
+#     validate_certs: true
+#   register: nebula_ca_check
+#   failed_when: false
+#   ignore_errors: true
+#   retries: 3
+#   delay: 2
+
+# - name: Init the nebula CA
+#   block:
+#     - name: Create the nebula CA
+#       ansible.builtin.shell: nebula-cert ca -name "homelab"
+#       args:
+#         chdir: "{{ role_path }}/files/nebula"
+#       when: nebula_ca_check is failed or nebula_ca_check.data is not defined
+
+#     - name: Upload the nebula private key to Vault
+#       community.hashi_vault.vault_write:
+#         url: "https://vault.ryuugu.dev"
+#         path: "kv2/nebula/private_key"
+#         data:
+#           key: "{{ lookup('file', '{{ role_path }}/files/nebula/ca.key') }}"
+#         token: "{{ vault_root_password }}"
+#         validate_certs: true
+
+#     - name: Upload the nebula certificate to Vault
+#       community.hashi_vault.vault_write:
+#         url: "https://vault.ryuugu.dev"
+#         path: "kv2/nebula/private_key"
+#         data:
+#           key: "{{ lookup('file', '{{ role_path }}/files/nebula/ca.key') }}"
+#         token: "{{ vault_root_password }}"
+#         validate_certs: true
+
+#     - name: Remove the generated files from host
+#       ansible.builtin.file:
+#         path: "{{ role_path }}/files/nebula/{{ item }}"
+#         state: absent
+#       with_items:
+#         - ca.key
+#         - ca.crt
+#   when: nebula_ca_check is failed or nebula_ca_check.data is not defined
+
+
+# - name: Build Droplet lighthouse cert
+  
 
 # - name: Build the hss image
 #   ansible.builtin.shell:

@@ -67,13 +67,3 @@
   loop_control:
     loop_var: item
     index_var: idx
-
-- name: print the contents of /mnt
-  command: ls -l /mnt
-  register: mount_contents
-
-- name: Print the contents of /mnt
-  debug:
-    var: mount_contents.stdout_lines
-  when: mount_contents is defined
-  ignore_errors: true

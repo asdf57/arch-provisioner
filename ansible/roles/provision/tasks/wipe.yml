@@ -28,6 +28,7 @@
       package:
         name: parted
         state: present
+        update_cache: yes
 
     - name: Find mounts on the disk
       ansible.builtin.shell:

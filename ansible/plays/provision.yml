@@ -1,8 +1,27 @@
+- name: API provision setup
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Set up servers in API
+      include_role:
+        name: provision
+        tasks_from: create_server
+      tags:
+        - setup
+
+- name: Infrastructure setup
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: General
+      include_role:
+        name: provision
+        tasks_from: init_server
+      tags:
+        - setup
+
 - name: Provision
   hosts: all
-  vars:
-    ansible_python_interpreter: >-
-      {{ lookup('env', 'VENV_PYTHON') if inventory_hostname == 'localhost' else '/usr/bin/python3' }}
   tasks:
     - name: Perform prereqs
       include_role:
@@ -19,7 +38,12 @@
         name: provision
         tasks_from: partition
 
-    - name: Setup the system
+    - name: Bootstrap setup
       include_role:
         name: provision
-        tasks_from: setup
+        tasks_from: bootstrap
+
+    # - name: Setup SSH on the disk
+    #   include_role:
+    #     name: provision
+    #     tasks_from: ssh_setup

@@ -157,9 +157,17 @@
 
 - name: Add files and dirs to be copied to all created users
   block:
+    - name: Clone the dotfiles repo
+      ansible.builtin.git:
+        repo: "{{ templates_repo }}"
+        dest: "{{ role_path }}/files/{{ inventory_hostname }}/dotfiles"
+        version: main
+        force: yes
+      delegate_to: localhost
+
     - name: Select all template dotfiles
       ansible.builtin.find:
-        paths: /home/condor/dotfiles
+        paths: "{{ role_path }}/files/{{ inventory_hostname }}/dotfiles/"
         recurse: yes
         patterns: "*.j2"
         file_type: file
@@ -170,23 +178,29 @@
       ansible.builtin.template:
         src: "{{ item.path }}"
         dest: "{{ item.path | regex_replace('\\.j2$', '') }}"
-        owner: root
-        group: root
         mode: '0755'
         force: yes
         backup: yes
       loop: "{{ templated_dotfiles.files }}"
       delegate_to: localhost
 
-    - name: Copy dotfiles to /etc/skel
-      ansible.builtin.copy:
-        src: /home/condor/dotfiles/
-        dest: /mnt/etc/skel/.config/
-        owner: root
-        group: root
-        mode: '0755'
-        force: yes
-        backup: yes
+    - name: Find and copy non-empty dotfiles
+      ansible.builtin.shell: |
+        find "{{ role_path }}/files/{{ inventory_hostname }}/dotfiles/" -type f -not -name "*.j2" | while read file; do
+          if grep -q '[^[:space:]]' "$file"; then
+            rel_path=$(realpath --relative-to="{{ role_path }}/files/{{ inventory_hostname }}/dotfiles/" "$file")
+            mkdir -p "/mnt/etc/skel/.config/$(dirname "$rel_path")"
+            cp -f "$file" "/mnt/etc/skel/.config/$rel_path"
+            chmod 0755 "/mnt/etc/skel/.config/$rel_path"
+          fi
+        done
+      delegate_to: localhost
+      changed_when: true
+
+    - name: Remove the local dotfiles
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/{{ inventory_hostname }}/dotfiles"
+        state: absent
 
 - name: Setup users in chroot
   block:
@@ -267,7 +281,7 @@
 
     - name: Run grub install command on Debian
       ansible.builtin.shell:
-        cmd: "chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=debian --recheck"
+        cmd: "chroot /mnt  /bin/bash -c 'grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=debian --recheck'"
       register: grub_install
       become: true
       when: ansible_facts['os_family'] == 'Debian'
