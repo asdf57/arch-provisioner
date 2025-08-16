@@ -1,0 +1,16 @@
+{
+  "type": "droplet",
+  "name": "droplet",
+  "region": "nyc3",
+  "size": "s-1vcpu-512mb-10gb",
+  "image": "debian-12-x64",
+  "users": [
+    {
+      "username": "user1",
+      "groups": [
+        "wheel",
+        "docker"
+      ]
+    }
+  ]
+}
