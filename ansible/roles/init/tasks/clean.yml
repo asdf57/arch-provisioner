@@ -78,3 +78,15 @@
   ansible.builtin.file:
     path: "{{ role_path }}/files/docker-compose.yml"
     state: absent
+
+- name: Cleanup the registry files
+  block:
+    - name: Delete the generated registry config file
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/registry/config/config.yml"
+        state: absent
+
+    - name: Delete the registry data directory
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/registry/data"
+        state: absent

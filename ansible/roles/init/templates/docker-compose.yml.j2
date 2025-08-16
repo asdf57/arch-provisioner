@@ -1,4 +1,21 @@
+volumes:
+  ssl_certs:
+    driver: local
+
 services:
+  registry:
+    container_name: registry
+    restart: always
+    image: registry
+    ports:
+      - 5000:5000
+    volumes:
+      - "{{ role_path }}/files/registry/config/config.yml:/etc/docker/registry/config.yml:ro"
+      - "{{ role_path }}/files/registry/data:/var/lib/registry:rw"
+    networks:
+      clusternet:
+        ipv4_address: "{{ registry_ipv4 }}"
+
   concourse-db:
     container_name: concourse-db
     image: postgres
@@ -19,7 +36,7 @@ services:
 
   concourse:
     container_name: concourse
-    image: concourse/concourse
+    image: concourse/concourse:7.6.0
     command: quickstart
     privileged: true
     cgroup: host
@@ -28,7 +45,7 @@ services:
         condition: service_healthy
     ports: ["8080:8080"]
     environment:
-      CONCOURSE_POSTGRES_HOST: concourse-db
+      CONCOURSE_POSTGRES_HOST: "{{ concourse_db_ipv4 }}"
       CONCOURSE_POSTGRES_USER: concourse_user
       CONCOURSE_POSTGRES_PASSWORD: concourse_pass
       CONCOURSE_POSTGRES_DATABASE: concourse
@@ -41,7 +58,7 @@ services:
       CONCOURSE_X_FRAME_OPTIONS: allow
       CONCOURSE_CONTENT_SECURITY_POLICY: "frame-ancestors *;"
       CONCOURSE_CLUSTER_NAME: homelab
-      CONCOURSE_WORKER_CONTAINERD_DNS_SERVER: "8.8.8.8"
+      CONCOURSE_WORKER_CONTAINERD_DNS_SERVER: "192.168.1.1"
       CONCOURSE_WORKER_RUNTIME: "containerd"
     restart: always
     networks:
@@ -73,6 +90,7 @@ services:
       - "{{ role_path }}/files/vault/vault_stuff/logs:/vault/logs"
       - "{{ role_path }}/files/vault/vault_stuff/secrets:/vault/secrets"
       - "{{ role_path }}/files/vault/vault_stuff/stuff:/stuff"
+      - ssl_certs:/vault/ssl:ro
 
     environment:
       VAULT_ADDR: "http://127.0.0.1:8200"
@@ -92,6 +110,7 @@ services:
       - "443:443"
     volumes:
       - "{{ role_path }}/files/nginx/files:/www/data"
+      - ssl_certs:/etc/nginx/ssl:rw
     restart: always
     labels:
       - sh.acme.autoload.domain={{ nginx_acme_label }}
@@ -121,6 +140,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - "{{ role_path }}/files/acme/acme.sh:/acme.sh"
+      - ssl_certs:/certs:rw
     restart: always
     depends_on:
       - nginx
