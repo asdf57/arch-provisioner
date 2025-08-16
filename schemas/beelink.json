@@ -1,17 +1,28 @@
 {
-  "inventory": {
-    "host": "beelink",
-    "ip": "10.1.1.254",
-    "mac": "e8:ff:1e:d4:03:fa",
-    "os": "arch",
-    "node_type": "coords",
-    "family": "server",
-    "groups": [],
-    "port": 22,
-    "ansible_user": "root"
+  "type": "server",
+  "name": "beelink",
+  "ip": "10.1.1.246",
+  "mac": "e8:ff:1e:d4:03:fa",
+  "flags": {
+    "enable_k8s": true
   },
+  "system": {
+    "os": "arch",
+    "node_type": "coord"
+  },
+  "groups": [],
+  "ansible_user": "root",
+  "users": [
+    {
+      "username": "user1",
+      "groups": [
+        "wheel",
+        "docker"
+      ]
+    }
+  ],
   "storage": {
-    "disk_name": "/dev/sda",
+    "disk_name": "sda",
     "partitions": [
       {
         "partition_type": "primary",
@@ -42,8 +53,5 @@
         ]
       }
     ]
-  },
-  "system": {
-    "os": "arch"
   }
 }

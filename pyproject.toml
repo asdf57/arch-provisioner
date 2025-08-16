@@ -14,5 +14,7 @@ dependencies = [
     "hvac",
     "passlib",
     "pydantic",
-    "jinja2-cli"
+    "jinja2-cli",
+    "routeros_api",
+    "markupsafe"
 ]

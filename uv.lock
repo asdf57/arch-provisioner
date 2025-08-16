@@ -20,12 +20,14 @@ dependencies = [
     { name = "jinja2" },
     { name = "jinja2-cli" },
     { name = "kubernetes" },
+    { name = "markupsafe" },
     { name = "mkdocs-material" },
     { name = "netaddr" },
     { name = "passlib" },
     { name = "pexpect" },
     { name = "pydantic" },
     { name = "rich" },
+    { name = "routeros-api" },
 ]
 
 [package.metadata]
@@ -34,12 +36,14 @@ requires-dist = [
     { name = "jinja2" },
     { name = "jinja2-cli" },
     { name = "kubernetes" },
+    { name = "markupsafe" },
     { name = "mkdocs-material" },
     { name = "netaddr" },
     { name = "passlib" },
     { name = "pexpect" },
     { name = "pydantic" },
     { name = "rich" },
+    { name = "routeros-api" },
 ]
 
 [[package]]
@@ -659,6 +663,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a1/53/830aa4c3066a8ab0ae9a9955976fb770fe9c6102117c8ec4ab3ea62d89e8/rich-14.0.0.tar.gz", hash = "sha256:82f1bc23a6a21ebca4ae0c45af9bdbc492ed20231dcb63f297d6d1021a9d5725", size = 224078 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0d/9b/63f4c7ebc259242c89b3acafdb37b41d1185c07ff0011164674e9076b491/rich-14.0.0-py3-none-any.whl", hash = "sha256:1c9491e1951aac09caffd42f448ee3d04e58923ffe14993f6e83068dc395d7e0", size = 243229 },
+]
+
+[[package]]
+name = "routeros-api"
+version = "0.21.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/3d/414cfbdc91ca6cf127cde120178ec0961caec4b1810e654f2d4520a475b7/routeros_api-0.21.0.tar.gz", hash = "sha256:0d37452a4ff85cd476dca392068d7d76ba430c9b055c39d8dabc5930a997d82d", size = 14332 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/00/05f60d90a041ff61fce514cf8db3d5b8401e45a1baad1b1b1cde814f5c27/routeros_api-0.21.0-py2.py3-none-any.whl", hash = "sha256:4189c11bdeae0d8d654b1f1212f3654a54f0df8e4ec0bcb4d5bc31303a7f76d0", size = 22656 },
 ]
 
 [[package]]
