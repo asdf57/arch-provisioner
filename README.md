@@ -41,10 +41,10 @@ A comprehensive homelab automation platform designed for automated provisioning 
    hlcli init infra
    ```
    - Deploys the infrastructure compose cluster
-    - Provisioning API
-    - nginx file store
-    - Vault
-    - Concourse CI/CD
+        - Provisioning API
+        - nginx file store
+        - Vault
+        - Concourse CI/CD
    - Builds and uploads netboot images for Debian and Arch Linux distros
 
 5. **Deploy Configuration**
