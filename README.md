@@ -3,6 +3,11 @@ A comprehensive homelab automation platform designed for automated provisioning 
 
 ## Getting Started
 
+### Related Repos
+- [prov2](https://github.com/asdf57/prov2)
+- [inventory](https://github.com/asdf57/inventory)
+- [hostvars](https://github.com/asdf57/hostvars)
+
 ### Prerequisites
 - Docker
 - `make` build tool
