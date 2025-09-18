@@ -1,0 +1,13 @@
+- name: Log in
+  ansible.builtin.shell: |
+    fly -t {{ concourse_team }} login \
+      -c {{ concourse_url }} \
+      -u {{ concourse_user }} \
+      -p {{ concourse_password }}
+
+- name: Set pipeline
+  ansible.builtin.shell: |
+    fly -t {{ concourse_team }} set-pipeline \
+    -p "test" \
+    --non-interactive \
+    -c "{{ role_path }}/files/pipelines/pipeline.yml"
