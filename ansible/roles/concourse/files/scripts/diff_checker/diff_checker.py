@@ -25,9 +25,8 @@ def get_inv_diff(prev_inv: dict, cur_inv: dict):
     print("To delete:", to_delete)
     print("To create:", to_create)
 
-
 if __name__ == "__main__":
-    if sys.argv != 2:
+    if len(sys.argv) != 2:
         print("diff_checker.py <inventory repo path>")
         sys.exit(1)
 
