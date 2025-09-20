@@ -11,6 +11,9 @@ def get_inv_diff(prev_inv: dict, cur_inv: dict):
     to_create = []
     to_delete = []
 
+    print(f"Previous inventory: {prev_inv}")
+    print(f"Current inventory: {cur_inv}")
+
     prev_hosts = prev_inv.get("hosts", [])
     cur_hosts = cur_inv.get("hosts", [])
 
