@@ -55,6 +55,7 @@
             yq
             iputils
             vault
+            fly
           ];
 
           shellHook = ''
@@ -65,6 +66,9 @@
             export ANSIBLE_FILTER_PLUGINS="$(pwd)/ansible/filter_plugins:$ANSIBLE_FILTER_PLUGINS"
             # export ANSIBLE_PRIVATE_KEY_FILE=/home/$(whoami)/.ssh/provisioning_key
             export ANSIBLE_HOST_KEY_CHECKING=False
+
+            uv sync
+            source $(pwd)/.venv/bin/activate
           '';
         };
 
