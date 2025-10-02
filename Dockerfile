@@ -51,8 +51,6 @@ RUN chown -R keiichi:keiichi /workspace
 
 USER keiichi
 
-# Change the ownership
-
 # Environment setup
 ENV PATH="/workspace/.venv/bin:$PATH" \
     PYTHONPATH="/workspace/.venv/lib/python3.12/site-packages" \
