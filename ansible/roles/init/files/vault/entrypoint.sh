@@ -37,5 +37,31 @@ else
   echo "KV secrets engine is already enabled."
 fi
 
+if ! vault secrets list -format=json | jq -e '."concourse/"' >/dev/null; then
+  vault secrets enable -version=2 -path=concourse kv
+fi
+
+if vault auth list -format=json | jq -e '."approle/"' > /dev/null; then
+  echo "AppRole already enabled, continuing"
+else
+  vault auth enable approle
+fi
+
+if vault policy read concourse >/dev/null 2>&1; then
+  vault policy write concourse ./policies/concourse-policy.hcl
+else
+  vault policy write concourse ./policies/concourse-policy.hcl
+fi
+
+if ! vault read auth/approle/role/concourse >/dev/null 2>&1; then
+  vault write auth/approle/role/concourse token_policies=concourse period=1h bind_secret_id=true
+fi
+
+concourse_role_id=$(vault read -field=role_id auth/approle/role/concourse/role-id | tr -d '\n')
+concourse_secret_id=$(vault write -field=secret_id -f auth/approle/role/concourse/secret-id | tr -d '\n')
+
+echo "$concourse_role_id" > /shared/concourse_role_id
+echo "$concourse_secret_id" > /shared/concourse_secret_id
+
 # Keep Vault running in the foreground
 wait $VAULT_PID
