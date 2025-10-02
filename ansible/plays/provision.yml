@@ -32,6 +32,7 @@
       include_role:
         name: provision
         tasks_from: wipe
+      when: should_wipe | bool | default(false)
 
     - name: Setup the disk
       include_role:
@@ -42,8 +43,3 @@
       include_role:
         name: provision
         tasks_from: bootstrap
-
-    # - name: Setup SSH on the disk
-    #   include_role:
-    #     name: provision
-    #     tasks_from: ssh_setup
