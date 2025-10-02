@@ -16,7 +16,7 @@
 
 - name: Assert that there are no active partitions
   assert:
-    that: "storage_info.partitions | length == 0"
+    that: storage_info.partitions | length == 0
     fail_msg: "There are active partitions on the disk ({{ storage_info.partitions | length }} partitions found)"
     success_msg: "No active partitions found on the disk ({{ storage_info.partitions | length }} partitions found)"
 
