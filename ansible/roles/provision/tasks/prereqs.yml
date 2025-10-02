@@ -5,3 +5,10 @@
     line: "nameserver 8.8.8.8"
     insertbefore: EOF
     state: present
+
+- name: Scream to the world that we're provisioning the system
+  shell: |
+    wall <<'EOF'
+    THIS SYSTEM IS CURRENTLY BEING PROVISIONED.
+    PLEASE REFRAIN FROM TOUCHING IT DURING THIS TIME
+    EOF
