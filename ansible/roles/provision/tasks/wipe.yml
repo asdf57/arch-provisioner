@@ -5,9 +5,9 @@
     state: "info"
   register: storage_info
 
-- name: Check if partitions exist 
+- name: Check if partitions exist
   set_fact:
-    do_partitions_exist: "storage_info.partitions | length > 0"
+    do_partitions_exist: "{{ (storage_info.partitions | length) > 0 }}"
 
 - name: Wipe the disk
   block:
@@ -86,4 +86,4 @@
         that:
           - "ansible_mounts | selectattr('device', 'contains', disk_name) | list | length == 0"
         fail_msg: "Mounted devices still exist on the disk."
-  when: do_partitions_exist
+  when: do_partitions_exist | bool
