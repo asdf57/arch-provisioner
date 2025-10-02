@@ -25,20 +25,13 @@ A comprehensive homelab automation platform designed for automated provisioning 
 3. **Build Core Components**
    **Provisioning Service:**
    ```bash
-   ./build_image.sh
+   make docker-build IMAGE_NAME=<name> IMAGE_TAG=<tag>
    ```
    This builds the `prov` Docker image required for the homelab environment.
 
-   **Command Line Interface:**
-   ```bash
-   cd cmd/
-   make install
-   ```
-   This compiles and installs the `hlcli` tool to `~/.local/bin` for user access.
-
 4. **Initialize Infrastructure**
    ```bash
-   hlcli init infra
+   make init-infra
    ```
    - Deploys the infrastructure compose cluster
         - Provisioning API
