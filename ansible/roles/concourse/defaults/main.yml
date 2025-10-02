@@ -4,3 +4,6 @@
 concourse_api_metallb_ip: 10.1.1.6
 concourse_worker_gateway_metallb_ip: 10.1.1.7
 concourse_prometheus_metallb_ip: 10.1.1.8
+
+commands_data_repo: "https://github.com/asdf57/commands_data.git"
+commands_data_branch: main

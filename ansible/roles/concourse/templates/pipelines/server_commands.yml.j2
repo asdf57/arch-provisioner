@@ -1,0 +1,38 @@
+resources:
+- name: commands
+  type: git
+  source:
+    uri: {{ commands_data_repo }}
+    branch: {{ commands_data_branch }}
+
+jobs:
+  - name: commands
+    plan:
+      - get: commands
+        trigger: true
+      - task: run-commands
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: registry.ryuugu.dev/prov
+              tag: latest
+          inputs:
+            - name: commands
+          params:
+            VAULT_TOKEN: ((root_token.key))
+            VAULT_ADDR: "{{ vault_url }}"
+            HOME: /home/keiichi
+          run:
+            path: /bin/bash
+            user: keiichi
+            args:
+              - -cx
+              - |
+                  commands_file=$(realpath commands/commands)
+                  cd /workspace
+                  ./scripts/runtime_setup.sh
+                  chmod +x "$commands_file"
+                  bash "$commands_file"
