@@ -1,7 +1,0 @@
-- name: Install Nginx Ingress using Helm
-  kubernetes.core.helm:
-    name: nginx-ingress
-    chart_ref: "{{ role_path }}/helm"
-    release_namespace: ingress-nginx
-    state: absent
-    wait: true

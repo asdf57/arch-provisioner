@@ -1,8 +1,0 @@
-- name: Install Python
-  hosts: all
-  become: yes
-  tasks:
-    - name: Install Python
-      include_role:
-        name: python
-        tasks_from: install
