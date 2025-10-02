@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # We need to switch to the parent directory of the script to execute
 # the ansible-playbook command correctly.
