@@ -45,9 +45,6 @@ RUN echo "%wheel ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 RUN useradd -G wheel -m -s /bin/bash keiichi
 RUN passwd -d keiichi
 
-#RUN adduser keiichi wheel
-#RUN adduser keiichi root
-
 # Copy rest of repo
 COPY --chown=keiichi:keiichi . .
 RUN chown -R keiichi:keiichi /workspace
