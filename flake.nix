@@ -69,15 +69,10 @@
 
             uv sync
             source $(pwd)/.venv/bin/activate
+
+            # ./scripts/runtime_setup.sh
           '';
         };
-
-        packages.setup = pkgs.writeShellApplication {
-          name = "setup";
-          runtimeInputs = [ pkgs.ansible pkgs.jq pkgs.git pkgs.python312 pkgs.uv pkgs.bash pkgs.vim pkgs.yq pkgs.iputils pkgs.vault ];
-          text = builtins.readFile ./scripts/build_setup.sh;
-        };
-
       }
     );
 }
