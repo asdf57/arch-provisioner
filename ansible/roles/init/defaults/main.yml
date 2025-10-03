@@ -4,7 +4,7 @@
 
 git_ssh_key_path: "/home/archusr/.ssh/git_provisioning_key"
 provisioning_ssh_key_path: "/home/archusr/.ssh/provisioning_key"
-provisioning_api_repo: "git@github.com:asdf57/provisioning-server.git"
+provisioning_api_repo: "git@github.com:asdf57/prov2.git"
 provisioning_api_ipv4: "10.2.0.2"
 inventory_repo: "git@github.com:asdf57/inventory.git"
 provisioning_api_version: "main"
@@ -14,6 +14,15 @@ inventory_version: "main"
 network_driver: "macvlan"
 
 interface: "enp7s0"
+
+# Concourse
+concourse_version: 7.12.1
+concourse_team: "test"
+concourse_ipv4: "10.1.1.126"
+concourse_db_ipv4: "10.1.1.127"
+concourse_user: "test"
+concourse_password: "test"
+concourse_url: "http://{{ concourse_ipv4 }}:8080"
 
 # IPVLAN driver settings
 ipvlan_subnet: "10.1.1.0/24"
@@ -25,22 +34,21 @@ macvlan_subnet: "10.1.1.0/24"
 macvlan_gateway: "10.1.1.1"
 macvlan_mode: "bridge"
 
-dhcp_range: ""
-cloudflare_domain: "REDACTED"
-cloudflare_api_key: "REDACTED"
-cloudflare_email: "REDACTED"
-zerossl_email: "REDACTED"
-zerossl_eab_kid: "REDACTED"
-zerossl_eab_hmac_key: "REDACTED"
+cloudflare_domain: "<FILL_ME_IN>"
+cloudflare_api_key: "<FILL_ME_IN>"
+cloudflare_email: "<FILL_ME_IN>"
+zerossl_email: "<FILL_ME_IN>"
+zerossl_eab_kid: "<FILL_ME_IN>"
+zerossl_eab_hmac_key: "<FILL_ME_IN>"
 cert_authority: "zerossl"
 
 nginx_ipv4: "10.1.1.123"
-nginx_acme_label: "REDACTED"
+nginx_acme_label: "nginx.ryuugu.dev"
 
 server_api_ipv4: "10.1.1.124"
 
 vault_ipv4: "10.1.1.125"
-vault_acme_label: "REDACTED"
+vault_url: "https://vault.ryuugu.dev"
+vault_acme_label: "vault.ryuugu.dev"
 
-user_uid: 1000
-user_gid: 1000
+registry_ipv4: "10.1.1.122"
