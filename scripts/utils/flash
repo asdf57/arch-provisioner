@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Burn ISO to USB using dd
+# Usage: flash /path/to/iso /dev/sdX
+
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 /path/to/iso /dev/sdX"
+    exit 1
+fi
+
+if [ ! -f $1 ]; then
+    echo "Error: $1 not found"
+    exit 1
+fi
+
+if [ ! -b $2 ]; then
+    echo "Error: $2 not found"
+    exit 1
+fi
+
+dd if=$1 of=$2 bs=4M status=progress oflag=sync
