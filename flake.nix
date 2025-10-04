@@ -56,21 +56,17 @@
             iputils
             vault
             fly
+            sudo
           ];
 
           shellHook = ''
-            export PYTHONPATH="$(pwd)/.venv/lib/python3.12/site-packages"
-            export PATH="$(pwd)/.venv/bin:$PATH"
             export ANSIBLE_INVENTORY="$(pwd)/inventory/inventory.yml"
             export ANSIBLE_ROLES_PATH="$(pwd)/ansible/roles"
             export ANSIBLE_FILTER_PLUGINS="$(pwd)/ansible/filter_plugins:$ANSIBLE_FILTER_PLUGINS"
-            # export ANSIBLE_PRIVATE_KEY_FILE=/home/$(whoami)/.ssh/provisioning_key
             export ANSIBLE_HOST_KEY_CHECKING=False
 
             uv sync
             source $(pwd)/.venv/bin/activate
-
-            # ./scripts/runtime_setup.sh
           '';
         };
       }
