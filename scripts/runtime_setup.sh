@@ -2,8 +2,20 @@
 
 set -uo pipefail
 
+touch /tmp/server_query_active
+
+cleanup() {
+    if [ -n "$SSH_AGENT_PID" ]; then
+        ssh-agent -k >/dev/null 2>&1
+    fi
+
+    rm -f /tmp/server_query_active
+}
+
+trap cleanup EXIT
+
 query_servers() {
-    while true; do
+    while [ -f /tmp/server_query_active ]; do
         ips=($(ansible-inventory -i inventory/inventory.yml --list | jq -r '._meta.hostvars | to_entries[] | .value.ansible_host'))
         num_up=0
         count=${#ips[@]}
@@ -21,6 +33,9 @@ query_servers() {
         echo "$num_up:$count" > /tmp/server_stats/reachability
         sleep 5
     done
+
+    # Clean up when the loop exits
+    rm -f /tmp/server_stats/reachability
 }
 
 get_prompt() {    
