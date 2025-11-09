@@ -1,5 +1,8 @@
 FROM alpine:3.22
 
+ARG DOCKER_GID=999
+ARG CONCOURSE_VERSION="7.12.1"
+
 RUN apk add --no-cache \
     bash \
     git \
@@ -34,31 +37,42 @@ RUN apk add --update --virtual .deps --no-cache gnupg && \
     rm -f /tmp/vault_1.20.4_linux_amd64.zip vault_1.20.4_SHA256SUMS 1.20.4/vault_1.20.4_SHA256SUMS.sig && \
     apk del .deps
 
-WORKDIR /workspace
+RUN curl -sL https://github.com/concourse/concourse/releases/download/v${CONCOURSE_VERSION}/fly-${CONCOURSE_VERSION}-linux-amd64.tgz -o /tmp/fly-linux-amd64.tgz && \
+    tar -xvzf /tmp/fly-linux-amd64.tgz -C /usr/local/bin
+
+WORKDIR /homelab
 
 # Pre-create venv + sync Python deps
 COPY pyproject.toml ./
+
 RUN uv venv .venv && uv sync
 
 RUN echo "%wheel ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-RUN useradd -G wheel -m -s /bin/bash keiichi
-RUN passwd -d keiichi
+RUN addgroup -g ${DOCKER_GID} docker || true && \
+    adduser -u 1000 -D keiichi && \
+    adduser keiichi docker && \
+    echo 'keiichi ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/keiichi && \
+    chmod 0440 /etc/sudoers.d/keiichi
 
 # Copy rest of repo
 COPY --chown=keiichi:keiichi . .
-RUN chown -R keiichi:keiichi /workspace
+RUN chown -R keiichi:keiichi /homelab
+
+COPY profile.d/ /etc/profile.d/
 
 USER keiichi
 
-# Environment setup
-ENV PATH="/workspace/.venv/bin:$PATH" \
-    PYTHONPATH="/workspace/.venv/lib/python3.12/site-packages" \
-    ANSIBLE_INVENTORY="/workspace/inventory/inventory.yml" \
-    ANSIBLE_ROLES_PATH="/workspace/ansible/roles" \
-    ANSIBLE_FILTER_PLUGINS="/workspace/ansible/filter_plugins" \
+# Allow non-interactive shells to source .bashrc
+ENV BASH_ENV="/home/keiichi/.bashrc"
+
+ENV PATH="/homelab/.venv/bin:$PATH" \
+    PYTHONPATH="/homelab/.venv/lib/python3.12/site-packages" \
+    ANSIBLE_INVENTORY="/homelab/inventory/inventory.yml" \
+    ANSIBLE_ROLES_PATH="/homelab/ansible/roles" \
+    ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins" \
     ANSIBLE_HOST_KEY_CHECKING=False
 
-RUN echo "source scripts/runtime_setup.sh" >> /home/keiichi/.bashrc
+RUN echo 'export PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' >> /home/keiichi/.profile
 
 CMD ["/bin/bash"]
