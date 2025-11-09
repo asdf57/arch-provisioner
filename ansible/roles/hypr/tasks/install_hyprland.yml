@@ -1,5 +1,0 @@
-- name: Install Hyprland
-  community.general.pacman:
-    name: "hyprland"
-    state: present
-    update_cache: yes

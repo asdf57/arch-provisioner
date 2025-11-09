@@ -1,5 +1,0 @@
-- name: Restart SDDM
-  systemd:
-    name: sddm
-    state: restarted
-  when: install_sddm

@@ -1,6 +1,0 @@
----
-# tasks file for kube
-
-- name: Install Kubernetes on Debian
-  include_tasks: install_debian.yml
-  when: ansible_os_family == 'Debian'

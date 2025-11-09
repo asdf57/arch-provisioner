@@ -1,5 +1,0 @@
-- name: Install Hyprpaper
-  community.general.pacman:
-    name: "hyprpaper"
-    state: present
-    update_cache: yes

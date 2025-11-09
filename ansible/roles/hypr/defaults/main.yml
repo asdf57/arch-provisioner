@@ -1,7 +1,0 @@
----
-# defaults file for hypr
-install_hyprland: true
-install_hyprcursor: true
-install_hyprlock: true
-install_hypridle: true
-install_hyprpaper: true

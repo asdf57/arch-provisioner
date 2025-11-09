@@ -1,5 +1,0 @@
-- name: Install Hyprcursor
-  community.general.pacman:
-    name: "hyprcursor"
-    state: present
-    update_cache: yes
