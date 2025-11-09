@@ -4,6 +4,7 @@ ARG DOCKER_GID=999
 ARG CONCOURSE_VERSION="7.12.1"
 
 RUN apk add --no-cache \
+    vim \
     bash \
     git \
     curl \
@@ -56,10 +57,12 @@ RUN addgroup -g ${DOCKER_GID} docker || true && \
     chmod 0440 /etc/sudoers.d/keiichi
 
 # Copy rest of repo
-COPY --chown=keiichi:keiichi . .
-RUN chown -R keiichi:keiichi /homelab
+COPY --chown=keiichi:keiichi ansible/filter_plugins/ ./ansible/filter_plugins/
+COPY --chown=keiichi:keiichi profile.d/ /etc/profile.d/
+COPY --chown=keiichi:keiichi schemas/ ./schemas/
+COPY --chown=keiichi:keiichi scripts/ ./scripts/
 
-COPY profile.d/ /etc/profile.d/
+RUN chown -R keiichi:keiichi /homelab
 
 USER keiichi
 
