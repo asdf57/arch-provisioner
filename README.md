@@ -25,13 +25,13 @@ A comprehensive homelab automation platform designed for automated provisioning 
 3. **Build Core Components**
    **Provisioning Service:**
    ```bash
-   make docker-build IMAGE_NAME=<name> IMAGE_TAG=<tag>
+   make docker-build
    ```
    This builds the `prov` Docker image required for the homelab environment.
 
 4. **Initialize Infrastructure**
    ```bash
-   make init-infra
+   make init-platform
    ```
    - Deploys the infrastructure compose cluster
         - Provisioning API
