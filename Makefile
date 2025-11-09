@@ -94,3 +94,7 @@ priv-env: ensure-ssh-key build-image
 
 user-env: build-image
 	docker run $(DOCKER_UNPRIV_BASE_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) bash --login
+
+init-servers: build-image
+	docker run $(DOCKER_UNPRIV_BASE_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
+		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/add_servers.yml"
