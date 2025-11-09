@@ -1,7 +1,7 @@
 {
   "type": "server",
   "name": "beelink",
-  "ip": "10.1.1.246",
+  "ip": "10.1.1.243",
   "mac": "e8:ff:1e:d4:03:fa",
   "flags": {
     "enable_k8s": true
