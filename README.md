@@ -7,6 +7,8 @@ A comprehensive homelab automation platform designed for automated provisioning 
 - [prov2](https://github.com/asdf57/prov2)
 - [inventory](https://github.com/asdf57/inventory)
 - [hostvars](https://github.com/asdf57/hostvars)
+- [commands_data](github.com/asdf57/commands_data)
+- [ansible-roles](https://github.com/asdf57/ansible-roles)
 
 ### Prerequisites
 - Docker
