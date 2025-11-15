@@ -1,7 +1,5 @@
 IMAGE_NAME ?= prov
 IMAGE_TAG  ?= latest
-GIT_PROVISIONING_KEY_FILE ?= $(HOME)/.ssh/git_provisioning_key
-PROVISIONING_KEY_FILE ?= $(HOME)/.ssh/provisioning_key
 
 include .env
 export
@@ -20,37 +18,56 @@ DOCKER_PRIV_OPTS = --rm -it \
 	-v /dev:/dev \
 	-w /homelab \
 	--env-file .env \
-	-v $(GIT_PROVISIONING_KEY_FILE):/etc/ssh/git_provisioning_key:ro \
-	-v $(PROVISIONING_KEY_FILE):/etc/ssh/provisioning_key:ro \
-	-v $(GIT_PROVISIONING_KEY_FILE).pub:/etc/ssh/git_provisioning_key.pub:ro \
-	-v $(PROVISIONING_KEY_FILE).pub:/etc/ssh/provisioning_key.pub:ro \
-	-v $(HOST_DATA_PATH):$(MOUNTED_DATA_PATH)
+	-v $(HOST_GIT_PROVISIONING_KEY_FILE):/etc/ssh/git_provisioning_key:ro \
+	-v $(HOST_PROVISIONING_KEY_FILE):/etc/ssh/provisioning_key:ro \
+	-v $(HOST_GIT_PROVISIONING_KEY_FILE).pub:/etc/ssh/git_provisioning_key.pub:ro \
+	-v $(HOST_PROVISIONING_KEY_FILE).pub:/etc/ssh/provisioning_key.pub:ro \
+	-v $(HOST_DATA_PATH):$(MOUNTED_DATA_PATH) \
 
 .PHONY: help clean provision provision-nix build-image nix-cleanup init-platform metal-env nix-env docker-env ensure-ssh-key
 
-build-homelab-data-dir:
-	@echo "Creating host data path at $(HOST_DATA_PATH)"
-	mkdir -p $(HOST_DATA_PATH)
-
-ensure-ssh-key:
-	@if [ ! -f $(GIT_PROVISIONING_KEY_FILE) ]; then \
-		echo ":: Generating Git provisioning SSH key at $(GIT_PROVISIONING_KEY_FILE)"; \
-		mkdir -p $$(dirname $(GIT_PROVISIONING_KEY_FILE)); \
-		ssh-keygen -t ed25519 -f $(GIT_PROVISIONING_KEY_FILE) -N "" -C "provisioning-key"; \
-		echo ":: SSH key generated. Add the public key to your Git provider:"; \
-		cat $(GIT_PROVISIONING_KEY_FILE).pub; \
+create-homelab-group:
+	@if ! getent group homelab > /dev/null 2>&1; then \
+		echo "Creating homelab group with GID 2000"; \
+		sudo groupadd -g 2000 homelab; \
 	else \
-		echo ":: SSH key already exists at $(GIT_PROVISIONING_KEY_FILE)"; \
+		echo "Group 'homelab' already exists"; \
 	fi
 
-	@if [ ! -f $(PROVISIONING_KEY_FILE) ]; then \
-		echo ":: Generating device provisioning SSH key at $(PROVISIONING_KEY_FILE)"; \
-		mkdir -p $$(dirname $(PROVISIONING_KEY_FILE)); \
-		ssh-keygen -t ed25519 -f $(PROVISIONING_KEY_FILE) -N "" -C "provisioning-key"; \
-		echo ":: SSH key generated. Will bake this into ISOs once built!"; \
-		cat $(PROVISIONING_KEY_FILE).pub; \
+	@if ! id -nG $(USER) | grep -qw homelab; then \
+		echo "Adding user $(USER) to homelab group"; \
+		sudo usermod -aG homelab $(USER); \
 	else \
-		echo ":: SSH key already exists at $(PROVISIONING_KEY_FILE)"; \
+		echo "User $(USER) is already in the homelab group"; \
+	fi
+
+build-homelab-data-dir: create-homelab-group
+	@echo ":: Ensuring /srv/homelab directory exists and has correct permissions"
+	@if [ ! -d "/srv/homelab" ]; then \
+		sudo mkdir -p /srv/homelab; \
+		sudo chown root:homelab /srv/homelab; \
+		sudo chmod 2775 /srv/homelab; \
+	fi
+
+ensure-ssh-key:
+	@if [ ! -f $(HOST_GIT_PROVISIONING_KEY_FILE) ]; then \
+		echo ":: Generating Git provisioning SSH key at $(HOST_GIT_PROVISIONING_KEY_FILE)"; \
+		mkdir -p $$(dirname $(HOST_GIT_PROVISIONING_KEY_FILE)); \
+		ssh-keygen -t ed25519 -f $(HOST_GIT_PROVISIONING_KEY_FILE) -N "" -C "provisioning-key"; \
+		echo ":: SSH key generated. Add the public key to your Git provider:"; \
+		cat $(HOST_GIT_PROVISIONING_KEY_FILE).pub; \
+	else \
+		echo ":: SSH key already exists at $(HOST_GIT_PROVISIONING_KEY_FILE)"; \
+	fi
+
+	@if [ ! -f $(HOST_PROVISIONING_KEY_FILE) ]; then \
+		echo ":: Generating device provisioning SSH key at $(HOST_PROVISIONING_KEY_FILE)"; \
+		mkdir -p $$(dirname $(HOST_PROVISIONING_KEY_FILE)); \
+		ssh-keygen -t ed25519 -f $(HOST_PROVISIONING_KEY_FILE) -N "" -C "provisioning-key"; \
+		echo ":: SSH key generated. Will bake this into ISOs once built!"; \
+		cat $(HOST_PROVISIONING_KEY_FILE).pub; \
+	else \
+		echo ":: SSH key already exists at $(HOST_PROVISIONING_KEY_FILE)"; \
 	fi
 
 help:
@@ -79,17 +96,17 @@ provision-nix:
 
 build-image:
 	@echo "Building docker image $(IMAGE_NAME):$(IMAGE_TAG)"
-	docker build --build-arg DOCKER_GID=$(shell getent group docker | cut -d: -f3) -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	docker build --build-arg DOCKER_GID=$$DOCKER_GID --build-arg HOMELAB_GID=$$HOMELAB_GID -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
-init-platform: build-homelab-data-dir ensure-ssh-key build-image
+init-platform: create-homelab-group build-homelab-data-dir ensure-ssh-key build-image
 	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
 		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/init.yml --tags build"
 
-init-platform-force: ensure-ssh-key build-image
+init-platform-force: create-homelab-group build-homelab-data-dir ensure-ssh-key build-image
 	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
 		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/init.yml"
 
-priv-env: ensure-ssh-key build-image
+priv-env: create-homelab-group build-homelab-data-dir ensure-ssh-key build-image
 	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) bash --login
 
 user-env: build-image
