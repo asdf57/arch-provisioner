@@ -77,8 +77,7 @@ export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
 sudo ssh-add /etc/ssh/provisioning_key
 sudo ssh-add /etc/ssh/git_provisioning_key
 
-rm -rf inventory /tmp/hostvars templates
-
+rm -rf inventory /tmp/hostvars templates ansible/plays ansible/roles
 
 git clone git@github.com:asdf57/ansible-roles.git /tmp/ansible &
 git clone git@github.com:asdf57/inventory.git inventory &
@@ -87,7 +86,11 @@ git clone git@github.com:asdf57/templates.git templates &
 
 wait
 
+mv /tmp/ansible/group_vars /homelab/inventory/group_vars
+
 mv /tmp/ansible/* /homelab/ansible/
+
+rm -rf /tmp/ansible
 
 # Copy all scripts from each roles script directory to cwd
 cp -r /homelab/ansible/roles/*/scripts/* . 2>/dev/null || true
