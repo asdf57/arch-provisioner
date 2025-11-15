@@ -1,6 +1,7 @@
 FROM alpine:3.22
 
-ARG DOCKER_GID=999
+ARG DOCKER_GID
+ARG HOMELAB_GID
 ARG CONCOURSE_VERSION="7.12.1"
 
 RUN apk add --no-cache \
@@ -50,9 +51,12 @@ RUN uv venv .venv && uv sync
 
 RUN echo "%wheel ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-RUN addgroup -g ${DOCKER_GID} docker || true && \
-    adduser -u 1000 -D keiichi && \
+RUN groupadd -g ${HOMELAB_GID} homelab
+RUN addgroup -g ${DOCKER_GID} docker
+
+RUN adduser -u 1000 -D keiichi && \
     adduser keiichi docker && \
+    adduser keiichi homelab && \
     echo 'keiichi ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/keiichi && \
     chmod 0440 /etc/sudoers.d/keiichi
 
