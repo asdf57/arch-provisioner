@@ -44,12 +44,14 @@ EOF
 
 # Grab the provisioning_key from Vault (kv2)
 PROVISIONING_KEY=$(vault kv get -field=key kv2/provisioning/ssh/private)
+PROVISIONING_KEY_PUB=$(vault kv get -field=key kv2/provisioning/ssh/public)
 
 if [[ -z "${GIT_PROVISIONING_KEY}" ]]; then
     GIT_PROVISIONING_KEY=$(vault kv get -field=key kv2/github/ssh/private)
 fi
 
 echo "$PROVISIONING_KEY" | sudo tee /etc/ssh/provisioning_key > /dev/null
+echo "$PROVISIONING_KEY_PUB" | sudo tee /etc/ssh/provisioning_key.pub > /dev/null
 echo "$GIT_PROVISIONING_KEY" | sudo tee /etc/ssh/git_provisioning_key > /dev/null
 
 sudo chmod 600 /etc/ssh/provisioning_key
@@ -109,28 +111,70 @@ for host in $hosts; do
     git pull  >/dev/null 2>&1
     cp hostvars.yml "$hv_path/$host.yml"
 
+    root_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/root/private 2>/dev/null || echo "")
+    if [[ -n "$root_ssh_key" ]]; then
+        echo "$root_ssh_key" | sudo tee /etc/ssh/id_${host}_root > /dev/null
+        sudo chmod 604 /etc/ssh/id_${host}_root
+    fi
+
+    users=$(yq eval '.users[].username' hostvars.yml 2>/dev/null || echo "")
+
+    echo ":: Pulling SSH keys for users on host: $host"
+    for user in $users; do
+        user_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/$user/private 2>/dev/null || echo "")
+        if [[ -n "$user_ssh_key" ]]; then
+            echo "$user_ssh_key" | sudo tee /etc/ssh/id_${host}_${user} > /dev/null
+            sudo chmod 604 /etc/ssh/id_${host}_${user}
+        fi
+    done
+
+    if [[ -z "${GIT_PROVISIONING_KEY}" ]]; then
+        GIT_PROVISIONING_KEY=$(vault kv get -field=key kv2/github/ssh/private)
+    fi
+
+    if [[ -z "${GIT_PROVISIONING_KEY}.pub" ]]; then
+        GIT_PROVISIONING_KEY_PUB=$(vault kv get -field=key kv2/github/ssh/public)
+    fi
+
+    echo "$PROVISIONING_KEY" | sudo tee /etc/ssh/provisioning_key > /dev/null
+
     ip_addr=$(ansible-inventory -i $inventory_path/inventory.yml --host "$host" | jq -r '.ansible_host')
     # if not empty and not equal to null
     if [[ -n "$ip_addr" && "$ip_addr" != "null" ]]; then
         echo "$ip_addr    $host" | sudo tee -a /etc/hosts >/dev/null
 
-        # Also add an entry to ssh config
         sudo tee -a /etc/ssh/ssh_config >/dev/null <<EOF
 Host $host
-    User root
+    HostName $ip_addr
+    StrictHostKeyChecking accept-new
     IdentityFile ~/.ssh/provisioning_key
-    IdentityFile /ssh/id_$host
-    StrictHostKeyChecking no
-    IdentitiesOnly yes
+    IdentityFile /etc/ssh/id_${host}_root
 EOF
 
-        sudo tee -a /etc/ssh/ssh_config >/dev/null <<EOF
-Host $ip_addr
-    User root
-    IdentityFile ~/.ssh/provisioning_key
-    StrictHostKeyChecking no
-    IdentitiesOnly yes
+        for user in $users; do
+            if [[ -f "/etc/ssh/id_${host}_${user}" ]]; then
+                sudo tee -a /etc/ssh/ssh_config >/dev/null <<EOF
+    IdentityFile /etc/ssh/id_${host}_${user}
 EOF
+            fi
+        done
+
+        # Root access via IP
+        sudo tee -a /etc/ssh/ssh_config >/dev/null <<EOF
+
+Host $ip_addr
+    StrictHostKeyChecking accept-new
+    IdentityFile ~/.ssh/provisioning_key
+    IdentityFile /etc/ssh/id_${host}_root
+EOF
+
+        for user in $users; do
+            if [[ -f "/etc/ssh/id_${host}_${user}" ]]; then
+                sudo tee -a /etc/ssh/ssh_config >/dev/null <<EOF
+    IdentityFile /etc/ssh/id_${host}_${user}
+EOF
+            fi
+        done
     fi
 done
 cd -
