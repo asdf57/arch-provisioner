@@ -76,11 +76,17 @@ help:
 	@echo "General:"
 	@echo "  help             Show this help message"
 	@echo "Targets:"
-	@echo "  provision        Run ansible provisioning playbook inside Docker"
-	@echo "  provision-nix    Run ansible provisioning playbook inside Nix shell"
-	@echo "  build-image      Build the Docker image for provisioning"
-	@echo "  nix-cleanup      Remove temporary files and directories from Nix env"
+	@echo "  clean            Clean up generated files"
 	@echo "  init-platform    Initialize homelab infrastructure using Nix shell"
+	@echo "  init-platform-force Force re-initialization of homelab infrastructure"
+	@echo "  provision        Run ansible provisioning playbook inside Docker"
+	@echo "  build-image      Build the Docker image for provisioning"
+	@echo "  build-and-upload Build and upload the Docker image to the registry"
+	@echo "  build-isos       Build installation ISOs for homelab devices"
+	@echo "  build-isos-force Force rebuild of installation ISOs"
+	@echo "  add-servers      Add new servers to the inventory and provision them"
+	@echo "  priv-env        Start a privileged shell environment"
+	@echo "  user-env        Start an unprivileged shell environment"
 	@echo "Environments:"
 	@echo "  nix-env          Start the Nix shell environment"
 	@echo "  docker-env       Start a shell in a container environment"
@@ -88,15 +94,17 @@ help:
 clean:
 	rm -rf inventory/
 
-provision:
-	docker run -e VAULT_TOKEN=$$VAULT_TOKEN -e VAULT_ADDR=$$VAULT_ADDR -it prov:latest bash -c "ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml --limit beelink -e vault_root_password=$VAULT_TOKEN -e should_wipe=true"
-
-provision-nix:
-	./scripts/nix_env.sh "ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml --limit beelink -e vault_root_password=$$VAULT_TOKEN -e should_wipe=true"
-
 build-image:
-	@echo "Building docker image $(IMAGE_NAME):$(IMAGE_TAG)"
+	@echo "Building docker image"
 	docker build --build-arg DOCKER_GID=$$DOCKER_GID --build-arg HOMELAB_GID=$$HOMELAB_GID -t $(IMAGE_NAME):$(IMAGE_TAG) .
+
+build-and-upload: build-image
+	docker tag $(IMAGE_NAME):$(IMAGE_TAG) registry.ryuugu.dev/$(IMAGE_NAME):$(IMAGE_TAG)
+	docker push registry.ryuugu.dev/$(IMAGE_NAME):$(IMAGE_TAG)
+
+provision:
+	docker run $(DOCKER_UNPRIV_BASE_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
+		bash -c "ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml -e should_wipe=true"
 
 init-platform: create-homelab-group build-homelab-data-dir ensure-ssh-key build-image
 	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
@@ -112,6 +120,14 @@ priv-env: create-homelab-group build-homelab-data-dir ensure-ssh-key build-image
 user-env: build-image
 	docker run $(DOCKER_UNPRIV_BASE_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) bash --login
 
-init-servers: build-image
+add-servers: build-image
 	docker run $(DOCKER_UNPRIV_BASE_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
 		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/add_servers.yml"
+
+build-isos: build-homelab-data-dir build-image
+	docker run $(DOCKER_UNPRIV_BASE_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
+		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/build_isos.yml"
+
+build-isos-force: build-homelab-data-dir build-image
+	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
+		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/build_isos.yml -e force_build=true"
