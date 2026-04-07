@@ -1,80 +1,99 @@
 #!/usr/bin/env bash
 
-set -o pipefail
+set -euo pipefail
+
+umask 077
+
+log() {
+    echo ":: $*"
+}
+
+require_env() {
+    local name
+
+    for name in "$@"; do
+        if [[ -z "${!name:-}" ]]; then
+            echo "Missing required environment variable: $name" >&2
+            exit 1
+        fi
+    done
+}
+
+clone_repo() {
+    local repo="$1"
+    local branch="$2"
+    local dest="$3"
+
+    git clone --branch "$branch" "$repo" "$dest"
+}
+
+cleanup() {
+    rm -rf /tmp/ansible /tmp/hostvars /tmp/groupvars
+}
+
+trap cleanup EXIT
+
+require_env \
+    MOUNTED_DATA_PATH \
+    VAULT_ADDR \
+    GIT_INVENTORY_REPO \
+    GIT_INVENTORY_BRANCH \
+    GIT_ANSIBLE_ROLES_REPO \
+    GIT_ANSIBLE_ROLES_BRANCH \
+    GIT_HOSTVARS_REPO \
+    GIT_HOSTVARS_BRANCH \
+    GIT_TEMPLATES_REPO \
+    GIT_TEMPLATES_BRANCH
 
 sudo mkdir -p /etc/ssh
+sudo mkdir -p "$MOUNTED_DATA_PATH"
 
-sudo mkdir -p $MOUNTED_DATA_PATH
-
-# Build the SSH config file
 sudo tee /etc/ssh/ssh_config > /dev/null <<EOF
 Host github.com
     User git
     IdentityFile /etc/ssh/git_provisioning_key
-    StrictHostKeyChecking no
+    IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
 EOF
 
-# Add github.com to known_hosts to indicate that we trust it (avoids host key checking prompt)
-ssh-keyscan github.com 2>/dev/null | sudo tee -a /etc/ssh/ssh_known_hosts > /dev/null
+if ! sudo ssh-keygen -F github.com -f /etc/ssh/ssh_known_hosts >/dev/null 2>&1; then
+    ssh-keyscan github.com 2>/dev/null | sudo tee -a /etc/ssh/ssh_known_hosts > /dev/null
+fi
 
-echo ":: Configuring sudo env"
+log "Configuring sudo env"
 sudo tee /etc/sudoers.d/10-homelab-env > /dev/null <<EOF
-Defaults env_keep += "SSH_AUTH_SOCK"
 Defaults secure_path="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EOF
 sudo chmod 0440 /etc/sudoers.d/10-homelab-env
 sudo visudo -cf /etc/sudoers.d/10-homelab-env
 
-# Grab the provisioning_key from Vault (kv2)
 PROVISIONING_KEY=$(vault kv get -field=key kv2/provisioning/ssh/private)
-
-# Reconstruct pubkey from private key
 PROVISIONING_KEY_PUB=$(ssh-keygen -y -f <(echo "$PROVISIONING_KEY"))
-
-if [[ -z "${GIT_PROVISIONING_KEY}" ]]; then
-    GIT_PROVISIONING_KEY=$(vault kv get -field=key kv2/github/ssh/private)
-fi
+GIT_PROVISIONING_KEY="${GIT_PROVISIONING_KEY:-$(vault kv get -field=key kv2/github/ssh/private)}"
 
 echo "$PROVISIONING_KEY" | sudo tee /etc/ssh/provisioning_key > /dev/null
 echo "$PROVISIONING_KEY_PUB" | sudo tee /etc/ssh/provisioning_key.pub > /dev/null
 echo "$GIT_PROVISIONING_KEY" | sudo tee /etc/ssh/git_provisioning_key > /dev/null
 
 sudo chmod 600 /etc/ssh/provisioning_key
+sudo chmod 644 /etc/ssh/provisioning_key.pub
 sudo chmod 600 /etc/ssh/git_provisioning_key
 
-# Add our private keys into .ssh directory
 mkdir -p ~/.ssh
+chmod 700 ~/.ssh
 echo "$PROVISIONING_KEY" > ~/.ssh/provisioning_key
-echo "$GIT_PROVISIONING_KEY" > ~/.ssh/git_provisioning_key
 chmod 600 ~/.ssh/provisioning_key
-chmod 600 ~/.ssh/git_provisioning_key
 
-# Start SSH agent with a socket accessible to all users
-# Kill existing agent if the socket already exists
-if [[ -S /tmp/ssh-agent.sock ]]; then
-    echo ":: Removing existing SSH agent socket"
-    sudo rm -f /tmp/ssh-agent.sock
-fi
+rm -rf inventory templates ansible/plays ansible/roles ansible/group_vars
 
-# Start up the SSH agent
-eval $(ssh-agent -s -a /tmp/ssh-agent.sock)
-sudo chmod 666 /tmp/ssh-agent.sock
-export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
-
-# Add the priv keys to the agent
-sudo ssh-add /etc/ssh/provisioning_key
-sudo ssh-add /etc/ssh/git_provisioning_key
-
-rm -rf inventory /tmp/hostvars /tmp/groupvars templates ansible/plays ansible/roles ansible/group_vars
-
-git clone git@github.com:asdf57/ansible-roles.git /tmp/ansible &
-git clone git@github.com:asdf57/inventory.git inventory &
-git clone git@github.com:asdf57/hostvars.git /tmp/hostvars &
-git clone git@github.com:asdf57/templates.git templates &
-if [[ -n "${GIT_GROUPVARS_REPO}" ]]; then
-    git clone --branch "${GIT_GROUPVARS_BRANCH:-main}" "${GIT_GROUPVARS_REPO}" /tmp/groupvars &
+clone_repo "$GIT_ANSIBLE_ROLES_REPO" "$GIT_ANSIBLE_ROLES_BRANCH" /tmp/ansible &
+clone_repo "$GIT_INVENTORY_REPO" "$GIT_INVENTORY_BRANCH" inventory &
+clone_repo "$GIT_HOSTVARS_REPO" "$GIT_HOSTVARS_BRANCH" /tmp/hostvars &
+clone_repo "$GIT_TEMPLATES_REPO" "$GIT_TEMPLATES_BRANCH" templates &
+if [[ -n "${GIT_GROUPVARS_REPO:-}" ]]; then
+    clone_repo "${GIT_GROUPVARS_REPO}" "${GIT_GROUPVARS_BRANCH:-main}" /tmp/groupvars &
 else
-    echo ":: GIT_GROUPVARS_REPO is not set; init will render local group vars and can publish them later"
+    log "GIT_GROUPVARS_REPO is not set; init will render local group vars and can publish them later"
 fi
 
 wait
@@ -83,60 +102,47 @@ mkdir -p /homelab/inventory/group_vars
 if [[ -d /tmp/groupvars/.git ]]; then
     find /tmp/groupvars -mindepth 1 -maxdepth 1 ! -name .git -exec cp -R {} /homelab/inventory/group_vars/ \;
 else
-    echo ":: Groupvars repo not available yet; continuing with init-generated group vars"
+    log "Groupvars repo not available yet; continuing with init-generated group vars"
 fi
 
 mv /tmp/ansible/* /homelab/ansible/
 
-rm -rf /tmp/ansible
-rm -rf /tmp/groupvars
-
-# Copy all scripts from each roles script directory to cwd
 cp -r /homelab/ansible/roles/*/scripts/* . 2>/dev/null || true
 
 mkdir -p inventory/host_vars
-
 inventory_path=$(realpath inventory)
-
 hv_path=$(realpath inventory/host_vars)
-hosts=$(ansible-inventory -i $inventory_path/inventory.yml --list | jq -r '._meta.hostvars | keys[]')
+hosts=$(ansible-inventory -i "$inventory_path/inventory.yml" --list | jq -r '._meta.hostvars | keys[]')
 
 cd /tmp/hostvars
 for host in $hosts; do
-    echo "=> Pulling hostvars for $host"
-    git switch $host >/dev/null 2>&1
-    git pull  >/dev/null 2>&1
+    log "Pulling hostvars for $host"
+    if ! git switch "$host" >/dev/null 2>&1; then
+        log "No hostvars branch for $host; skipping"
+        continue
+    fi
+
+    git pull --ff-only >/dev/null 2>&1
     cp hostvars.yml "$hv_path/$host.yml"
 
     root_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/root/private 2>/dev/null || echo "")
     if [[ -n "$root_ssh_key" ]]; then
         echo "$root_ssh_key" | sudo tee /etc/ssh/id_${host}_root > /dev/null
-        sudo chmod 604 /etc/ssh/id_${host}_root
+        sudo chmod 600 /etc/ssh/id_${host}_root
     fi
 
     users=$(yq eval '.users[].username' hostvars.yml 2>/dev/null || echo "")
 
-    echo ":: Pulling SSH keys for users on host: $host"
+    log "Pulling SSH keys for users on host: $host"
     for user in $users; do
         user_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/$user/private 2>/dev/null || echo "")
         if [[ -n "$user_ssh_key" ]]; then
             echo "$user_ssh_key" | sudo tee /etc/ssh/id_${host}_${user} > /dev/null
-            sudo chmod 604 /etc/ssh/id_${host}_${user}
+            sudo chmod 600 /etc/ssh/id_${host}_${user}
         fi
     done
 
-    if [[ -z "${GIT_PROVISIONING_KEY}" ]]; then
-        GIT_PROVISIONING_KEY=$(vault kv get -field=key kv2/github/ssh/private)
-    fi
-
-    if [[ -z "${GIT_PROVISIONING_KEY}.pub" ]]; then
-        GIT_PROVISIONING_KEY_PUB=$(vault kv get -field=key kv2/github/ssh/public)
-    fi
-
-    echo "$PROVISIONING_KEY" | sudo tee /etc/ssh/provisioning_key > /dev/null
-
-    ip_addr=$(ansible-inventory -i $inventory_path/inventory.yml --host "$host" | jq -r '.ansible_host')
-    # if not empty and not equal to null
+    ip_addr=$(ansible-inventory -i "$inventory_path/inventory.yml" --host "$host" | jq -r '.ansible_host')
     if [[ -n "$ip_addr" && "$ip_addr" != "null" ]]; then
         echo "$ip_addr    $host" | sudo tee -a /etc/hosts >/dev/null
 
@@ -156,7 +162,6 @@ EOF
             fi
         done
 
-        # Root access via IP
         sudo tee -a /etc/ssh/ssh_config >/dev/null <<EOF
 
 Host $ip_addr
@@ -174,16 +179,14 @@ EOF
         done
     fi
 done
-cd -
+cd - >/dev/null
 
-rm -rf /tmp/hostvars
-
-echo $PATH
-
-# Set the global path in /etc/profile
-echo "export PATH=\"\$PATH\"" | sudo tee -a /etc/profile >/dev/null
-
-fly -t "$CONCOURSE_TARGET" login \
-      -c "$CONCOURSE_URL" \
-      -u "$CONCOURSE_USER" \
-      -p "$CONCOURSE_PASSWORD"
+if [[ -n "${CONCOURSE_TARGET:-}" && -n "${CONCOURSE_URL:-}" && -n "${CONCOURSE_USER:-}" && -n "${CONCOURSE_PASSWORD:-}" ]]; then
+    if ! fly -t "$CONCOURSE_TARGET" status >/dev/null 2>&1; then
+        log "Logging into Concourse target $CONCOURSE_TARGET"
+        fly -t "$CONCOURSE_TARGET" login \
+            -c "$CONCOURSE_URL" \
+            -u "$CONCOURSE_USER" \
+            -p "$CONCOURSE_PASSWORD"
+    fi
+fi
