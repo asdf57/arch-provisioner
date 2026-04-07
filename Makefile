@@ -96,7 +96,7 @@ clean:
 
 build-image:
 	@echo "Building docker image"
-	docker build --build-arg DOCKER_GID=$$DOCKER_GID --build-arg HOMELAB_GID=$$HOMELAB_GID -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	docker build --build-arg DOCKER_GID=$$DOCKER_GID --build-arg HOMELAB_GID=$$HOMELAB_GID --build-arg CONCOURSE_VERSION=$$CONCOURSE_VERSION -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
 build-and-upload: build-image
 	docker tag $(IMAGE_NAME):$(IMAGE_TAG) registry.ryuugu.dev/$(IMAGE_NAME):$(IMAGE_TAG)

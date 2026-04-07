@@ -2,13 +2,6 @@
 
 set -o pipefail
 
-export PATH=/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export PYTHONPATH="/homelab/.venv/lib/python3.12/site-packages"
-export ANSIBLE_INVENTORY="/homelab/inventory/inventory.yml"
-export ANSIBLE_ROLES_PATH="/homelab/ansible/roles"
-export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
-export ANSIBLE_HOST_KEY_CHECKING=False
-
 sudo mkdir -p /etc/ssh
 
 sudo mkdir -p $MOUNTED_DATA_PATH
@@ -21,30 +14,22 @@ Host github.com
     StrictHostKeyChecking no
 EOF
 
+# Add github.com to known_hosts to indicate that we trust it (avoids host key checking prompt)
 ssh-keyscan github.com 2>/dev/null | sudo tee -a /etc/ssh/ssh_known_hosts > /dev/null
 
-echo ":: Configuring sudo to preserve PATH"
-sudo tee /etc/sudoers > /dev/null <<EOF
-root ALL=(ALL:ALL) ALL
-
-## Uncomment to allow members of group wheel to execute any command
-%wheel ALL=(ALL:ALL) ALL
-
-## Same thing without a password
-# %wheel ALL=(ALL:ALL) NOPASSWD: ALL
-
-## Keep the PATH env var when we invoke sudo
-Defaults    env_keep += "PATH SSH_AUTH_SOCK"
-
-## Read drop-in files from /etc/sudoers.d
-@includedir /etc/sudoers.d
-
-Defaults env_keep += "PATH"
+echo ":: Configuring sudo env"
+sudo tee /etc/sudoers.d/10-homelab-env > /dev/null <<EOF
+Defaults env_keep += "SSH_AUTH_SOCK"
+Defaults secure_path="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EOF
+sudo chmod 0440 /etc/sudoers.d/10-homelab-env
+sudo visudo -cf /etc/sudoers.d/10-homelab-env
 
 # Grab the provisioning_key from Vault (kv2)
 PROVISIONING_KEY=$(vault kv get -field=key kv2/provisioning/ssh/private)
-PROVISIONING_KEY_PUB=$(vault kv get -field=key kv2/provisioning/ssh/public)
+
+# Reconstruct pubkey from private key
+PROVISIONING_KEY_PUB=$(ssh-keygen -y -f <(echo "$PROVISIONING_KEY"))
 
 if [[ -z "${GIT_PROVISIONING_KEY}" ]]; then
     GIT_PROVISIONING_KEY=$(vault kv get -field=key kv2/github/ssh/private)
@@ -57,6 +42,7 @@ echo "$GIT_PROVISIONING_KEY" | sudo tee /etc/ssh/git_provisioning_key > /dev/nul
 sudo chmod 600 /etc/ssh/provisioning_key
 sudo chmod 600 /etc/ssh/git_provisioning_key
 
+# Add our private keys into .ssh directory
 mkdir -p ~/.ssh
 echo "$PROVISIONING_KEY" > ~/.ssh/provisioning_key
 echo "$GIT_PROVISIONING_KEY" > ~/.ssh/git_provisioning_key
@@ -75,24 +61,35 @@ eval $(ssh-agent -s -a /tmp/ssh-agent.sock)
 sudo chmod 666 /tmp/ssh-agent.sock
 export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
 
-
+# Add the priv keys to the agent
 sudo ssh-add /etc/ssh/provisioning_key
 sudo ssh-add /etc/ssh/git_provisioning_key
 
-rm -rf inventory /tmp/hostvars templates ansible/plays ansible/roles
+rm -rf inventory /tmp/hostvars /tmp/groupvars templates ansible/plays ansible/roles ansible/group_vars
 
 git clone git@github.com:asdf57/ansible-roles.git /tmp/ansible &
 git clone git@github.com:asdf57/inventory.git inventory &
 git clone git@github.com:asdf57/hostvars.git /tmp/hostvars &
 git clone git@github.com:asdf57/templates.git templates &
+if [[ -n "${GIT_GROUPVARS_REPO}" ]]; then
+    git clone --branch "${GIT_GROUPVARS_BRANCH:-main}" "${GIT_GROUPVARS_REPO}" /tmp/groupvars &
+else
+    echo ":: GIT_GROUPVARS_REPO is not set; init will render local group vars and can publish them later"
+fi
 
 wait
 
-mv /tmp/ansible/group_vars /homelab/inventory/group_vars
+mkdir -p /homelab/inventory/group_vars
+if [[ -d /tmp/groupvars/.git ]]; then
+    find /tmp/groupvars -mindepth 1 -maxdepth 1 ! -name .git -exec cp -R {} /homelab/inventory/group_vars/ \;
+else
+    echo ":: Groupvars repo not available yet; continuing with init-generated group vars"
+fi
 
 mv /tmp/ansible/* /homelab/ansible/
 
 rm -rf /tmp/ansible
+rm -rf /tmp/groupvars
 
 # Copy all scripts from each roles script directory to cwd
 cp -r /homelab/ansible/roles/*/scripts/* . 2>/dev/null || true

@@ -1,4 +1,4 @@
-FROM alpine:3.22
+FROM alpine:3.23
 
 ARG DOCKER_GID
 ARG HOMELAB_GID
@@ -47,39 +47,32 @@ WORKDIR /homelab
 # Pre-create venv + sync Python deps
 COPY pyproject.toml ./
 
-RUN uv venv .venv && uv sync
+RUN uv sync
 
 RUN echo "%wheel ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 RUN groupadd -g ${HOMELAB_GID} homelab
+
+# Needed to allow the container to use the host's Docker socket for provisioning and other tasks.
 RUN addgroup -g ${DOCKER_GID} docker
 
-RUN adduser -u 1000 -D keiichi && \
+RUN adduser -u 1000 -D -s /bin/bash keiichi && \
     adduser keiichi docker && \
     adduser keiichi homelab && \
-    echo 'keiichi ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/keiichi && \
-    chmod 0440 /etc/sudoers.d/keiichi
+    adduser keiichi wheel
 
 # Copy rest of repo
 COPY --chown=keiichi:keiichi ansible/filter_plugins/ ./ansible/filter_plugins/
 COPY --chown=keiichi:keiichi profile.d/ /etc/profile.d/
-COPY --chown=keiichi:keiichi schemas/ ./schemas/
-COPY --chown=keiichi:keiichi scripts/ ./scripts/
 
 RUN chown -R keiichi:keiichi /homelab
 
 USER keiichi
 
-# Allow non-interactive shells to source .bashrc
-ENV BASH_ENV="/home/keiichi/.bashrc"
-
-ENV PATH="/homelab/.venv/bin:$PATH" \
-    PYTHONPATH="/homelab/.venv/lib/python3.12/site-packages" \
+ENV PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     ANSIBLE_INVENTORY="/homelab/inventory/inventory.yml" \
     ANSIBLE_ROLES_PATH="/homelab/ansible/roles" \
     ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins" \
     ANSIBLE_HOST_KEY_CHECKING=False
-
-RUN echo 'export PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' >> /home/keiichi/.profile
 
 CMD ["/bin/bash"]
