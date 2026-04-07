@@ -33,6 +33,12 @@ cleanup() {
 
 trap cleanup EXIT
 
+export PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export ANSIBLE_INVENTORY="/homelab/inventory/inventory.yml"
+export ANSIBLE_ROLES_PATH="/homelab/ansible/roles"
+export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
+export ANSIBLE_HOST_KEY_CHECKING=False
+
 require_env \
     MOUNTED_DATA_PATH \
     VAULT_ADDR \
@@ -67,17 +73,29 @@ EOF
 sudo chmod 0440 /etc/sudoers.d/10-homelab-env
 sudo visudo -cf /etc/sudoers.d/10-homelab-env
 
-PROVISIONING_KEY=$(vault kv get -field=key kv2/provisioning/ssh/private)
-PROVISIONING_KEY_PUB=$(ssh-keygen -y -f <(echo "$PROVISIONING_KEY"))
-GIT_PROVISIONING_KEY="${GIT_PROVISIONING_KEY:-$(vault kv get -field=key kv2/github/ssh/private)}"
+if sudo test -r /etc/ssh/provisioning_key; then
+    PROVISIONING_KEY="$(sudo cat /etc/ssh/provisioning_key)"
+else
+    PROVISIONING_KEY="$(vault kv get -field=key kv2/provisioning/ssh/private)"
+    echo "$PROVISIONING_KEY" | sudo tee /etc/ssh/provisioning_key > /dev/null
+    sudo chmod 600 /etc/ssh/provisioning_key
+fi
 
-echo "$PROVISIONING_KEY" | sudo tee /etc/ssh/provisioning_key > /dev/null
-echo "$PROVISIONING_KEY_PUB" | sudo tee /etc/ssh/provisioning_key.pub > /dev/null
-echo "$GIT_PROVISIONING_KEY" | sudo tee /etc/ssh/git_provisioning_key > /dev/null
+if sudo test -r /etc/ssh/provisioning_key.pub; then
+    PROVISIONING_KEY_PUB="$(sudo cat /etc/ssh/provisioning_key.pub)"
+else
+    PROVISIONING_KEY_PUB="$(ssh-keygen -y -f <(echo "$PROVISIONING_KEY"))"
+    echo "$PROVISIONING_KEY_PUB" | sudo tee /etc/ssh/provisioning_key.pub > /dev/null
+    sudo chmod 644 /etc/ssh/provisioning_key.pub
+fi
 
-sudo chmod 600 /etc/ssh/provisioning_key
-sudo chmod 644 /etc/ssh/provisioning_key.pub
-sudo chmod 600 /etc/ssh/git_provisioning_key
+if sudo test -r /etc/ssh/git_provisioning_key; then
+    GIT_PROVISIONING_KEY="$(sudo cat /etc/ssh/git_provisioning_key)"
+else
+    GIT_PROVISIONING_KEY="${GIT_PROVISIONING_KEY:-$(vault kv get -field=key kv2/github/ssh/private)}"
+    echo "$GIT_PROVISIONING_KEY" | sudo tee /etc/ssh/git_provisioning_key > /dev/null
+    sudo chmod 600 /etc/ssh/git_provisioning_key
+fi
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
@@ -180,13 +198,3 @@ EOF
     fi
 done
 cd - >/dev/null
-
-if [[ -n "${CONCOURSE_TARGET:-}" && -n "${CONCOURSE_URL:-}" && -n "${CONCOURSE_USER:-}" && -n "${CONCOURSE_PASSWORD:-}" ]]; then
-    if ! fly -t "$CONCOURSE_TARGET" status >/dev/null 2>&1; then
-        log "Logging into Concourse target $CONCOURSE_TARGET"
-        fly -t "$CONCOURSE_TARGET" login \
-            -c "$CONCOURSE_URL" \
-            -u "$CONCOURSE_USER" \
-            -p "$CONCOURSE_PASSWORD"
-    fi
-fi
