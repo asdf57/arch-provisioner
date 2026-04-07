@@ -8,6 +8,10 @@ log() {
     echo ":: $*"
 }
 
+warn() {
+    echo ":: $*" >&2
+}
+
 require_env() {
     local name
 
@@ -27,6 +31,10 @@ clone_repo() {
     git clone --branch "$branch" "$repo" "$dest"
 }
 
+vault_can_read() {
+    vault kv get -field=key "$1" >/dev/null 2>&1
+}
+
 cleanup() {
     rm -rf /tmp/ansible /tmp/hostvars /tmp/groupvars
 }
@@ -41,7 +49,6 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 
 require_env \
     MOUNTED_DATA_PATH \
-    VAULT_ADDR \
     GIT_INVENTORY_REPO \
     GIT_INVENTORY_BRANCH \
     GIT_ANSIBLE_ROLES_REPO \
@@ -73,12 +80,22 @@ EOF
 sudo chmod 0440 /etc/sudoers.d/10-homelab-env
 sudo visudo -cf /etc/sudoers.d/10-homelab-env
 
+vault_kv_available=false
+if [[ -n "${VAULT_ADDR:-}" ]] && vault_can_read kv2/provisioning/ssh/private; then
+    vault_kv_available=true
+else
+    warn "Vault is not reachable or not authenticated; using mounted SSH keys and skipping Vault-backed extras"
+fi
+
 if sudo test -r /etc/ssh/provisioning_key; then
     PROVISIONING_KEY="$(sudo cat /etc/ssh/provisioning_key)"
-else
+elif [[ "$vault_kv_available" == true ]]; then
     PROVISIONING_KEY="$(vault kv get -field=key kv2/provisioning/ssh/private)"
     echo "$PROVISIONING_KEY" | sudo tee /etc/ssh/provisioning_key > /dev/null
     sudo chmod 600 /etc/ssh/provisioning_key
+else
+    echo "Missing /etc/ssh/provisioning_key and Vault is unavailable." >&2
+    exit 1
 fi
 
 if sudo test -r /etc/ssh/provisioning_key.pub; then
@@ -91,10 +108,13 @@ fi
 
 if sudo test -r /etc/ssh/git_provisioning_key; then
     GIT_PROVISIONING_KEY="$(sudo cat /etc/ssh/git_provisioning_key)"
-else
+elif [[ "$vault_kv_available" == true ]]; then
     GIT_PROVISIONING_KEY="${GIT_PROVISIONING_KEY:-$(vault kv get -field=key kv2/github/ssh/private)}"
     echo "$GIT_PROVISIONING_KEY" | sudo tee /etc/ssh/git_provisioning_key > /dev/null
     sudo chmod 600 /etc/ssh/git_provisioning_key
+else
+    echo "Missing /etc/ssh/git_provisioning_key and Vault is unavailable." >&2
+    exit 1
 fi
 
 mkdir -p ~/.ssh
@@ -143,7 +163,10 @@ for host in $hosts; do
     git pull --ff-only >/dev/null 2>&1
     cp hostvars.yml "$hv_path/$host.yml"
 
-    root_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/root/private 2>/dev/null || echo "")
+    root_ssh_key=""
+    if [[ "$vault_kv_available" == true ]]; then
+        root_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/root/private 2>/dev/null || echo "")
+    fi
     if [[ -n "$root_ssh_key" ]]; then
         echo "$root_ssh_key" | sudo tee /etc/ssh/id_${host}_root > /dev/null
         sudo chmod 600 /etc/ssh/id_${host}_root
@@ -154,6 +177,9 @@ for host in $hosts; do
     log "Pulling SSH keys for users on host: $host"
     for user in $users; do
         user_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/$user/private 2>/dev/null || echo "")
+        if [[ "$vault_kv_available" != true ]]; then
+            user_ssh_key=""
+        fi
         if [[ -n "$user_ssh_key" ]]; then
             echo "$user_ssh_key" | sudo tee /etc/ssh/id_${host}_${user} > /dev/null
             sudo chmod 600 /etc/ssh/id_${host}_${user}
@@ -198,3 +224,15 @@ EOF
     fi
 done
 cd - >/dev/null
+
+if [[ -n "${CONCOURSE_TARGET:-}" && -n "${CONCOURSE_URL:-}" && -n "${CONCOURSE_USER:-}" && -n "${CONCOURSE_PASSWORD:-}" ]]; then
+    if ! fly -t "$CONCOURSE_TARGET" status >/dev/null 2>&1; then
+        log "Attempting Concourse login for target $CONCOURSE_TARGET"
+        if ! fly -t "$CONCOURSE_TARGET" login \
+            -c "$CONCOURSE_URL" \
+            -u "$CONCOURSE_USER" \
+            -p "$CONCOURSE_PASSWORD"; then
+            warn "Concourse login failed; continuing bootstrap"
+        fi
+    fi
+fi
