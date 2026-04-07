@@ -1,4 +1,6 @@
 out/
+.env.local
+.env.shared
 **/venv/
 **/*.pem
 **/__pycache__/

@@ -183,7 +183,7 @@ echo $PATH
 # Set the global path in /etc/profile
 echo "export PATH=\"\$PATH\"" | sudo tee -a /etc/profile >/dev/null
 
-fly -t test login \
-      -c https://ci.ryuugu.dev \
-      -u test \
-      -p test
+fly -t "$CONCOURSE_TARGET" login \
+      -c "$CONCOURSE_URL" \
+      -u "$CONCOURSE_USER" \
+      -p "$CONCOURSE_PASSWORD"

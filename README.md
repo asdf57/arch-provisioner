@@ -16,39 +16,33 @@ A comprehensive homelab automation platform designed for automated provisioning 
 - Access to target infrastructure nodes
 
 ### Installation & Setup
-1. **Configure Schema**
-   - Create a new schema file in the `schemas/` directory
-   - Refer to the provisioning API documentation for complete schema specifications (available after API initialization)
+1. **Create Shared Bootstrap Config**
+   - Copy `.env.shared.example` to `.env.shared`
+   - Fill in the secure shared values you want every infra node to use
 
-2. **Initialize Default Configuration**
-   - Populate the defaults file located in the `init` role with required configuration data
-   - Ensure all mandatory fields are completed before proceeding
-
-3. **Build Core Components**
-   **Provisioning Service:**
-   ```bash
-   make docker-build
-   ```
-   This builds the `prov` Docker image required for the homelab environment.
-
-4. **Initialize Infrastructure**
+2. **Initialize Infrastructure**
    ```bash
    make init-platform
    ```
+   This single command now:
+   - detects host-local values and writes `.env.local`
+   - creates the `homelab` group and host data directory
+   - generates missing SSH keys
+   - renders `.env` from `.env.shared` and `.env.local`
    - Deploys the infrastructure compose cluster
-        - Provisioning API
-        - nginx file store
-        - Vault
-        - Concourse CI/CD
+     - Provisioning API
+     - nginx file store
+     - Vault
+     - Concourse CI/CD
    - Builds and uploads netboot images for Debian and Arch Linux distros
 
-5. **Deploy Configuration**
+3. **Deploy Configuration**
    ```bash
    hlcli upload <schema_file_path>
    ```
    Upload your schema file to the provisioning API to initialize a new node.
 
-6. **Provision Servers**
+4. **Provision Servers**
    ```bash
    hlcli init servers
    ```
