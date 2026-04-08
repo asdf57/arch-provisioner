@@ -1,6 +1,5 @@
 out/
-.env.local
-.env.shared
+.env.runtime
 **/venv/
 **/*.pem
 **/__pycache__/

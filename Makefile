@@ -1,8 +1,7 @@
 IMAGE_NAME ?= prov
 IMAGE_TAG  ?= latest
-BOOTSTRAP_ENV_FILE ?= .env
-BOOTSTRAP_SHARED_FILE ?= .env.shared
-BOOTSTRAP_LOCAL_FILE ?= .env.local
+USER_ENV_FILE ?= .env
+BOOTSTRAP_ENV_FILE ?= .env.runtime
 
 -include $(BOOTSTRAP_ENV_FILE)
 export
@@ -30,7 +29,7 @@ DOCKER_PRIV_OPTS = --rm -it \
 .PHONY: help clean build-image _build-image build-and-upload _build-and-upload \
 	provision _provision init-platform _init-platform init-platform-force _init-platform-force \
 	priv-env _priv-env user-env _user-env add-servers _add-servers build-isos _build-isos \
-	build-isos-force _build-isos-force render-env bootstrap-host ensure-bootstrap-shared \
+	build-isos-force _build-isos-force render-env \
 	create-homelab-group build-homelab-data-dir ensure-ssh-key
 
 create-homelab-group:
@@ -54,18 +53,8 @@ build-homelab-data-dir: create-homelab-group
 	@sudo chown root:homelab $(HOST_DATA_PATH)
 	@sudo chmod 2775 $(HOST_DATA_PATH)
 
-ensure-bootstrap-shared:
-	@if [ ! -f "$(BOOTSTRAP_SHARED_FILE)" ]; then \
-		echo ":: Missing $(BOOTSTRAP_SHARED_FILE)"; \
-		echo ":: Copy .env.shared.example to $(BOOTSTRAP_SHARED_FILE) and fill in the secure shared values"; \
-		exit 1; \
-	fi
-
-bootstrap-host:
-	@./scripts/bootstrap_host.sh "$(BOOTSTRAP_LOCAL_FILE)"
-
-render-env: ensure-bootstrap-shared bootstrap-host
-	@./scripts/render_env.sh "$(BOOTSTRAP_ENV_FILE)" "$(BOOTSTRAP_SHARED_FILE)" "$(BOOTSTRAP_LOCAL_FILE)"
+render-env:
+	@./scripts/render_env.sh "$(USER_ENV_FILE)" "$(BOOTSTRAP_ENV_FILE)"
 
 ensure-ssh-key:
 	@if [ ! -f $(HOST_GIT_PROVISIONING_KEY_FILE) ]; then \
@@ -95,8 +84,7 @@ help:
 	@echo "  help             Show this help message"
 	@echo "Targets:"
 	@echo "  clean            Clean up generated files"
-	@echo "  bootstrap-host   Detect local host values and generate .env.local"
-	@echo "  render-env       Merge .env.shared and .env.local into .env"
+	@echo "  render-env       Generate .env.runtime from .env and detected host values"
 	@echo "  init-platform    Initialize homelab infrastructure using Nix shell"
 	@echo "  init-platform-force Force re-initialization of homelab infrastructure"
 	@echo "  provision        Run ansible provisioning playbook inside Docker"
