@@ -93,7 +93,10 @@ if [[ -z "${HOST_DROPLET_KEY_FILE:-}" ]]; then
   exit 1
 fi
 
-cp "$user_file" "$runtime_file"
+sed -E \
+  -e 's/^([A-Za-z_][A-Za-z0-9_]*)="(.*)"$/\1=\2/' \
+  -e "s/^([A-Za-z_][A-Za-z0-9_]*)='(.*)'$/\\1=\\2/" \
+  "$user_file" > "$runtime_file"
 
 DOCKER_GID="$(detect_docker_gid)"
 HOMELAB_GID="$(detect_homelab_gid)"
