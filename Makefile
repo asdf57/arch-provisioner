@@ -15,6 +15,7 @@ DOCKER_PRIV_OPTS = --rm -it \
 	--privileged \
 	--network host \
 	-v /var/run/docker.sock:/var/run/docker.sock \
+	-v /lib/modules:/lib/modules:ro \
 	-v /proc:/proc \
 	-v /sys:/sys \
 	-v /dev:/dev \
