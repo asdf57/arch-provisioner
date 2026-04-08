@@ -88,6 +88,11 @@ if [[ -z "${HOST_PROVISIONING_KEY_FILE:-}" ]]; then
   exit 1
 fi
 
+if [[ -z "${HOST_DROPLET_KEY_FILE:-}" ]]; then
+  echo "HOST_DROPLET_KEY_FILE must be set in $user_file" >&2
+  exit 1
+fi
+
 cp "$user_file" "$runtime_file"
 
 DOCKER_GID="$(detect_docker_gid)"
@@ -102,6 +107,7 @@ NETWORK_INTERFACE=$NETWORK_INTERFACE
 MOUNTED_DATA_PATH=$HOST_DATA_PATH
 GIT_SSH_KEY_PATH=/etc/ssh/git_provisioning_key
 PROVISIONING_SSH_KEY_PATH=/etc/ssh/provisioning_key
+DROPLET_SSH_KEY_PATH=/etc/ssh/droplet_key
 EOF
 
 echo ":: Rendered $runtime_file from $user_file"
