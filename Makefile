@@ -22,8 +22,10 @@ DOCKER_PRIV_OPTS = --rm -it \
 	--env-file $(BOOTSTRAP_ENV_FILE) \
 	-v $(HOST_GIT_PROVISIONING_KEY_FILE):/etc/ssh/git_provisioning_key:ro \
 	-v $(HOST_PROVISIONING_KEY_FILE):/etc/ssh/provisioning_key:ro \
+	-v $(HOST_DROPLET_KEY_FILE):/etc/ssh/droplet_key:ro \
 	-v $(HOST_GIT_PROVISIONING_KEY_FILE).pub:/etc/ssh/git_provisioning_key.pub:ro \
 	-v $(HOST_PROVISIONING_KEY_FILE).pub:/etc/ssh/provisioning_key.pub:ro \
+	-v $(HOST_DROPLET_KEY_FILE).pub:/etc/ssh/droplet_key.pub:ro \
 	-v $(HOST_DATA_PATH):$(MOUNTED_DATA_PATH) \
 
 .PHONY: help clean build-image _build-image build-and-upload _build-and-upload \
@@ -75,6 +77,16 @@ ensure-ssh-key:
 		cat $(HOST_PROVISIONING_KEY_FILE).pub; \
 	else \
 		echo ":: SSH key already exists at $(HOST_PROVISIONING_KEY_FILE)"; \
+	fi
+
+	@if [ ! -f $(HOST_DROPLET_KEY_FILE) ]; then \
+		echo ":: Generating droplet SSH key at $(HOST_DROPLET_KEY_FILE)"; \
+		mkdir -p $$(dirname $(HOST_DROPLET_KEY_FILE)); \
+		ssh-keygen -t ed25519 -f $(HOST_DROPLET_KEY_FILE) -N "" -C "droplet-key"; \
+		echo ":: SSH key generated for droplet access."; \
+		cat $(HOST_DROPLET_KEY_FILE).pub; \
+	else \
+		echo ":: SSH key already exists at $(HOST_DROPLET_KEY_FILE)"; \
 	fi
 
 help:
