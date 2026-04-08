@@ -122,6 +122,16 @@ chmod 700 ~/.ssh
 echo "$PROVISIONING_KEY" > ~/.ssh/provisioning_key
 chmod 600 ~/.ssh/provisioning_key
 
+if sudo test -r "${DROPLET_SSH_KEY_PATH:-/etc/ssh/droplet_key}"; then
+    sudo cat "${DROPLET_SSH_KEY_PATH:-/etc/ssh/droplet_key}" > ~/.ssh/id_droplet
+    chmod 600 ~/.ssh/id_droplet
+
+    if sudo test -r "${DROPLET_SSH_KEY_PATH:-/etc/ssh/droplet_key}.pub"; then
+        sudo cat "${DROPLET_SSH_KEY_PATH:-/etc/ssh/droplet_key}.pub" > ~/.ssh/id_droplet.pub
+        chmod 644 ~/.ssh/id_droplet.pub
+    fi
+fi
+
 rm -rf inventory templates ansible/plays ansible/roles ansible/group_vars
 
 clone_repo "$GIT_ANSIBLE_ROLES_REPO" "$GIT_ANSIBLE_ROLES_BRANCH" /tmp/ansible &
