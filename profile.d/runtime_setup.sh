@@ -51,6 +51,8 @@ require_env \
     MOUNTED_DATA_PATH \
     GIT_INVENTORY_REPO \
     GIT_INVENTORY_BRANCH \
+    GIT_GROUPVARS_REPO \
+    GIT_GROUPVARS_BRANCH \
     GIT_ANSIBLE_ROLES_REPO \
     GIT_ANSIBLE_ROLES_BRANCH \
     GIT_HOSTVARS_REPO \
@@ -138,20 +140,12 @@ clone_repo "$GIT_ANSIBLE_ROLES_REPO" "$GIT_ANSIBLE_ROLES_BRANCH" /tmp/ansible &
 clone_repo "$GIT_INVENTORY_REPO" "$GIT_INVENTORY_BRANCH" inventory &
 clone_repo "$GIT_HOSTVARS_REPO" "$GIT_HOSTVARS_BRANCH" /tmp/hostvars &
 clone_repo "$GIT_TEMPLATES_REPO" "$GIT_TEMPLATES_BRANCH" templates &
-if [[ -n "${GIT_GROUPVARS_REPO:-}" ]]; then
-    clone_repo "${GIT_GROUPVARS_REPO}" "${GIT_GROUPVARS_BRANCH:-main}" /tmp/groupvars &
-else
-    log "GIT_GROUPVARS_REPO is not set; init will render local group vars and can publish them later"
-fi
+clone_repo "$GIT_GROUPVARS_REPO" "$GIT_GROUPVARS_BRANCH" /tmp/groupvars &
 
 wait
 
 mkdir -p /homelab/inventory/group_vars
-if [[ -d /tmp/groupvars/.git ]]; then
-    find /tmp/groupvars -mindepth 1 -maxdepth 1 ! -name .git -exec cp -R {} /homelab/inventory/group_vars/ \;
-else
-    log "Groupvars repo not available yet; continuing with init-generated group vars"
-fi
+find /tmp/groupvars -mindepth 1 -maxdepth 1 ! -name .git -exec cp -R {} /homelab/inventory/group_vars/ \;
 
 mv /tmp/ansible/* /homelab/ansible/
 
