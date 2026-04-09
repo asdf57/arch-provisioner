@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     yq \
     python3 py3-pip py3-virtualenv \
     docker-cli docker-compose \
+    skopeo \
     openssh \
     shadow \
     coreutils \
