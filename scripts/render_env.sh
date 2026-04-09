@@ -69,9 +69,34 @@ detect_homelab_gid() {
   printf '%s\n' "$gid"
 }
 
-set -a
-source "$user_file"
-set +a
+read_user_env() {
+  local line
+  local key
+  local value
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" != *=* ]] && continue
+
+    key="${line%%=*}"
+    value="${line#*=}"
+
+    if [[ "$value" =~ ^\".*\"$ ]]; then
+      value="${value:1:${#value}-2}"
+    elif [[ "$value" =~ ^\'.*\'$ ]]; then
+      value="${value:1:${#value}-2}"
+    fi
+
+    case "$key" in
+      HOST_DATA_PATH) HOST_DATA_PATH="$value" ;;
+      HOST_GIT_PROVISIONING_KEY_FILE) HOST_GIT_PROVISIONING_KEY_FILE="$value" ;;
+      HOST_PROVISIONING_KEY_FILE) HOST_PROVISIONING_KEY_FILE="$value" ;;
+      HOST_DROPLET_KEY_FILE) HOST_DROPLET_KEY_FILE="$value" ;;
+    esac
+  done < "$user_file"
+}
+
+read_user_env
 
 if [[ -z "${HOST_DATA_PATH:-}" ]]; then
   echo "HOST_DATA_PATH must be set in $user_file" >&2
