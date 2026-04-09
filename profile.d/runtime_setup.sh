@@ -71,6 +71,7 @@ Host github.com
     StrictHostKeyChecking accept-new
 EOF
 
+# Ensure github.com's SSH host key is in the known_hosts file to prevent MITM prompts during provisioning
 if ! sudo ssh-keygen -F github.com -f /etc/ssh/ssh_known_hosts >/dev/null 2>&1; then
     ssh-keyscan github.com 2>/dev/null | sudo tee -a /etc/ssh/ssh_known_hosts > /dev/null
 fi
@@ -86,7 +87,7 @@ vault_kv_available=false
 if [[ -n "${VAULT_ADDR:-}" ]] && vault_can_read kv2/provisioning/ssh/private; then
     vault_kv_available=true
 else
-    warn "Vault is not reachable or not authenticated; using mounted SSH keys and skipping Vault-backed extras"
+    warn "Vault is not reachable or not authenticated! SSH keys will not be pulled from Vault."
 fi
 
 if sudo test -r /etc/ssh/provisioning_key; then
@@ -103,6 +104,7 @@ fi
 if sudo test -r /etc/ssh/provisioning_key.pub; then
     PROVISIONING_KEY_PUB="$(sudo cat /etc/ssh/provisioning_key.pub)"
 else
+    # If we don't provide the pubkey, regenerate it from the private key
     PROVISIONING_KEY_PUB="$(ssh-keygen -y -f <(echo "$PROVISIONING_KEY"))"
     echo "$PROVISIONING_KEY_PUB" | sudo tee /etc/ssh/provisioning_key.pub > /dev/null
     sudo chmod 644 /etc/ssh/provisioning_key.pub
@@ -167,6 +169,7 @@ for host in $hosts; do
     git pull --ff-only >/dev/null 2>&1
     cp hostvars.yml "$hv_path/$host.yml"
 
+    # If this DNE, will be created and uploaded to Vault during server provisioning
     root_ssh_key=""
     if [[ "$vault_kv_available" == true ]]; then
         root_ssh_key=$(vault kv get -field=key kv2/servers/$host/ssh/root/private 2>/dev/null || echo "")
@@ -174,9 +177,11 @@ for host in $hosts; do
     if [[ -n "$root_ssh_key" ]]; then
         echo "$root_ssh_key" | sudo tee /etc/ssh/id_${host}_root > /dev/null
         sudo chmod 600 /etc/ssh/id_${host}_root
+    else
+        warn "No root SSH key found for host $host; skipping"
     fi
 
-    users=$(yq eval '.users[].username' hostvars.yml 2>/dev/null || echo "")
+    users=$(yq eval '.users[].name' hostvars.yml 2>/dev/null || echo "")
 
     log "Pulling SSH keys for users on host: $host"
     for user in $users; do
@@ -187,6 +192,8 @@ for host in $hosts; do
         if [[ -n "$user_ssh_key" ]]; then
             echo "$user_ssh_key" | sudo tee /etc/ssh/id_${host}_${user} > /dev/null
             sudo chmod 600 /etc/ssh/id_${host}_${user}
+        else
+            warn "No SSH key found for user $user on host $host; skipping"
         fi
     done
 
