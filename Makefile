@@ -29,6 +29,8 @@ DOCKER_PRIV_OPTS = --rm -it \
 	-v $(HOST_DROPLET_KEY_FILE).pub:/etc/ssh/droplet_key.pub:ro \
 	-v $(HOST_DATA_PATH):$(MOUNTED_DATA_PATH) \
 
+DOCKER_BOOTSTRAP_ENV_OPTS = -e IS_BOOTSTRAP_ENV=true
+
 .PHONY: help clean build-image _build-image build-and-upload _build-and-upload \
 	provision _provision init-platform _init-platform init-platform-force _init-platform-force \
 	priv-env _priv-env user-env _user-env add-servers _add-servers build-isos _build-isos \
@@ -140,21 +142,21 @@ init-platform: render-env
 	@$(MAKE) --no-print-directory _init-platform
 
 _init-platform: create-homelab-group build-homelab-data-dir ensure-ssh-key _build-image
-	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
+	docker run $(DOCKER_PRIV_OPTS) $(DOCKER_BOOTSTRAP_ENV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
 		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/init.yml --tags build"
 
 init-platform-force: render-env
 	@$(MAKE) --no-print-directory _init-platform-force
 
 _init-platform-force: create-homelab-group build-homelab-data-dir ensure-ssh-key _build-image
-	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
+	docker run $(DOCKER_PRIV_OPTS) $(DOCKER_BOOTSTRAP_ENV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) \
 		bash -lc "ansible-playbook -i inventory/inventory.yml ansible/plays/init.yml"
 
 priv-env: render-env
 	@$(MAKE) --no-print-directory _priv-env
 
 _priv-env: create-homelab-group build-homelab-data-dir ensure-ssh-key _build-image
-	docker run $(DOCKER_PRIV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) bash --login
+	docker run $(DOCKER_PRIV_OPTS) $(DOCKER_BOOTSTRAP_ENV_OPTS) $(IMAGE_NAME):$(IMAGE_TAG) bash --login
 
 user-env: render-env
 	@$(MAKE) --no-print-directory _user-env

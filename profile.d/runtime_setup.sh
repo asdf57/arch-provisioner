@@ -46,9 +46,9 @@ export ANSIBLE_INVENTORY="/homelab/inventory/inventory.yml"
 export ANSIBLE_ROLES_PATH="/homelab/ansible/roles"
 export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
 export ANSIBLE_HOST_KEY_CHECKING=False
+export IS_BOOTSTRAP_ENV="${IS_BOOTSTRAP_ENV:-false}"
 
 require_env \
-    MOUNTED_DATA_PATH \
     GIT_INVENTORY_REPO \
     GIT_INVENTORY_BRANCH \
     GIT_GROUPVARS_REPO \
@@ -60,8 +60,15 @@ require_env \
     GIT_TEMPLATES_REPO \
     GIT_TEMPLATES_BRANCH
 
+if [[ "${IS_BOOTSTRAP_ENV}" == "true" ]]; then
+    require_env MOUNTED_DATA_PATH
+fi
+
 sudo mkdir -p /etc/ssh
-sudo mkdir -p "$MOUNTED_DATA_PATH"
+
+if [[ "${IS_BOOTSTRAP_ENV}" == "true" ]]; then
+    sudo mkdir -p "$MOUNTED_DATA_PATH"
+fi
 
 sudo tee /etc/ssh/ssh_config > /dev/null <<EOF
 Host github.com
