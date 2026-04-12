@@ -71,7 +71,7 @@ fi
 sudo tee /etc/ssh/ssh_config > /dev/null <<EOF
 Host github.com
     User git
-    IdentityFile /etc/ssh/git_provisioning_key
+    IdentityFile ~/.ssh/git_provisioning_key
     IdentitiesOnly yes
     StrictHostKeyChecking accept-new
 EOF
@@ -128,6 +128,8 @@ fi
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
+echo "$GIT_PROVISIONING_KEY" > ~/.ssh/git_provisioning_key
+chmod 600 ~/.ssh/git_provisioning_key
 echo "$PROVISIONING_KEY" > ~/.ssh/provisioning_key
 chmod 600 ~/.ssh/provisioning_key
 
