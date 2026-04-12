@@ -254,3 +254,6 @@ if [[ -n "${CONCOURSE_TARGET:-}" && -n "${CONCOURSE_URL:-}" && -n "${CONCOURSE_U
         fi
     fi
 fi
+
+set +e +u
+set +o pipefail
