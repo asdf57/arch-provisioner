@@ -47,18 +47,16 @@ export ANSIBLE_ROLES_PATH="/homelab/ansible/roles"
 export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
 export ANSIBLE_HOST_KEY_CHECKING=False
 export IS_BOOTSTRAP_ENV="${IS_BOOTSTRAP_ENV:-false}"
-
-require_env \
-    GIT_INVENTORY_REPO \
-    GIT_INVENTORY_BRANCH \
-    GIT_GROUPVARS_REPO \
-    GIT_GROUPVARS_BRANCH \
-    GIT_ANSIBLE_ROLES_REPO \
-    GIT_ANSIBLE_ROLES_BRANCH \
-    GIT_HOSTVARS_REPO \
-    GIT_HOSTVARS_BRANCH \
-    GIT_TEMPLATES_REPO \
-    GIT_TEMPLATES_BRANCH
+export GIT_INVENTORY_REPO="${GIT_INVENTORY_REPO:-git@github.com:asdf57/inventory.git}"
+export GIT_INVENTORY_BRANCH="${GIT_INVENTORY_BRANCH:-main}"
+export GIT_GROUPVARS_REPO="${GIT_GROUPVARS_REPO:-git@github.com:asdf57/groupvars.git}"
+export GIT_GROUPVARS_BRANCH="${GIT_GROUPVARS_BRANCH:-main}"
+export GIT_ANSIBLE_ROLES_REPO="${GIT_ANSIBLE_ROLES_REPO:-git@github.com:asdf57/ansible-roles.git}"
+export GIT_ANSIBLE_ROLES_BRANCH="${GIT_ANSIBLE_ROLES_BRANCH:-main}"
+export GIT_HOSTVARS_REPO="${GIT_HOSTVARS_REPO:-git@github.com:asdf57/hostvars.git}"
+export GIT_HOSTVARS_BRANCH="${GIT_HOSTVARS_BRANCH:-main}"
+export GIT_TEMPLATES_REPO="${GIT_TEMPLATES_REPO:-git@github.com:asdf57/homelab-templates.git}"
+export GIT_TEMPLATES_BRANCH="${GIT_TEMPLATES_BRANCH:-main}"
 
 if [[ "${IS_BOOTSTRAP_ENV}" == "true" ]]; then
     require_env MOUNTED_DATA_PATH
