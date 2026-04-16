@@ -12,7 +12,7 @@ RUN apk add --no-cache \
     jq \
     yq \
     python3 py3-pip py3-virtualenv \
-    docker-cli docker-compose \
+    docker docker-compose \
     skopeo \
     openssh \
     shadow \
