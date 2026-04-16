@@ -56,7 +56,10 @@ RUN groupadd -g ${HOMELAB_GID} homelab
 
 # Needed to allow the container to use the host's Docker socket for provisioning and other tasks.
 RUN if getent group docker >/dev/null; then \
-      true; \
+      current_gid="$(getent group docker | cut -d: -f3)"; \
+      if [ "$current_gid" != "${DOCKER_GID}" ]; then \
+        groupmod -g "${DOCKER_GID}" docker; \
+      fi; \
     else \
       addgroup -g ${DOCKER_GID} docker; \
     fi
