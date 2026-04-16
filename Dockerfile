@@ -55,7 +55,11 @@ RUN echo "%wheel ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 RUN groupadd -g ${HOMELAB_GID} homelab
 
 # Needed to allow the container to use the host's Docker socket for provisioning and other tasks.
-RUN addgroup -g ${DOCKER_GID} docker
+RUN if getent group docker >/dev/null; then \
+      true; \
+    else \
+      addgroup -g ${DOCKER_GID} docker; \
+    fi
 
 RUN adduser -u 1000 -D -s /bin/bash keiichi && \
     adduser keiichi docker && \
