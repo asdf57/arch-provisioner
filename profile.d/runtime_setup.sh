@@ -108,6 +108,10 @@ fi
 
 if sudo test -r /etc/ssh/provisioning_key.pub; then
     PROVISIONING_KEY_PUB="$(sudo cat /etc/ssh/provisioning_key.pub)"
+elif [[ "$vault_kv_available" == true ]] && vault_can_read kv2/provisioning/ssh/public; then
+    PROVISIONING_KEY_PUB="$(vault kv get -field=key kv2/provisioning/ssh/public)"
+    echo "$PROVISIONING_KEY_PUB" | sudo tee /etc/ssh/provisioning_key.pub > /dev/null
+    sudo chmod 644 /etc/ssh/provisioning_key.pub
 else
     # If we don't provide the pubkey, regenerate it from the private key
     PROVISIONING_KEY_PUB="$(ssh-keygen -y -f <(echo "$PROVISIONING_KEY"))"
@@ -132,6 +136,8 @@ echo "$GIT_PROVISIONING_KEY" > ~/.ssh/git_provisioning_key
 chmod 600 ~/.ssh/git_provisioning_key
 echo "$PROVISIONING_KEY" > ~/.ssh/provisioning_key
 chmod 600 ~/.ssh/provisioning_key
+echo "$PROVISIONING_KEY_PUB" > ~/.ssh/provisioning_key.pub
+chmod 644 ~/.ssh/provisioning_key.pub
 
 if sudo test -r "${DROPLET_SSH_KEY_PATH:-/etc/ssh/droplet_key}"; then
     sudo cat "${DROPLET_SSH_KEY_PATH:-/etc/ssh/droplet_key}" > ~/.ssh/id_droplet
