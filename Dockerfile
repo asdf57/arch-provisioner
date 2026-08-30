@@ -1,7 +1,5 @@
-FROM alpine:3.23
+FROM alpine:3.24
 
-ARG DOCKER_GID
-ARG HOMELAB_GID
 ARG CONCOURSE_VERSION="7.12.1"
 
 RUN apk add --no-cache \
@@ -15,10 +13,9 @@ RUN apk add --no-cache \
     docker docker-compose \
     skopeo \
     openssh \
-    shadow \
     coreutils \
     findutils \
-    sudo \
+    sudo \  
     tar \
     build-base \
     uv \
@@ -27,18 +24,7 @@ RUN apk add --no-cache \
     cargo \
     && rm -rf /var/cache/apk/*
 
-RUN apk add --update --virtual .deps --no-cache gnupg && \
-    cd /tmp && \
-    wget https://releases.hashicorp.com/vault/1.20.4/vault_1.20.4_linux_amd64.zip && \
-    wget https://releases.hashicorp.com/vault/1.20.4/vault_1.20.4_SHA256SUMS && \
-    wget https://releases.hashicorp.com/vault/1.20.4/vault_1.20.4_SHA256SUMS.sig && \
-    wget -qO- https://www.hashicorp.com/.well-known/pgp-key.txt | gpg --import && \
-    gpg --verify vault_1.20.4_SHA256SUMS.sig vault_1.20.4_SHA256SUMS && \
-    grep vault_1.20.4_linux_amd64.zip vault_1.20.4_SHA256SUMS | sha256sum -c && \
-    unzip /tmp/vault_1.20.4_linux_amd64.zip -d /tmp && \
-    mv /tmp/vault /usr/local/bin/vault && \
-    rm -f /tmp/vault_1.20.4_linux_amd64.zip vault_1.20.4_SHA256SUMS 1.20.4/vault_1.20.4_SHA256SUMS.sig && \
-    apk del .deps
+RUN apk add --no-cache --virtual .build-deps openbao
 
 RUN curl -sL https://github.com/concourse/concourse/releases/download/v${CONCOURSE_VERSION}/fly-${CONCOURSE_VERSION}-linux-amd64.tgz -o /tmp/fly-linux-amd64.tgz && \
     tar -xvzf /tmp/fly-linux-amd64.tgz -C /usr/local/bin
@@ -52,26 +38,11 @@ RUN uv sync
 
 RUN echo "%wheel ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-RUN groupadd -g ${HOMELAB_GID} homelab
-
-# Needed to allow the container to use the host's Docker socket for provisioning and other tasks.
-RUN if getent group docker >/dev/null; then \
-      current_gid="$(getent group docker | cut -d: -f3)"; \
-      if [ "$current_gid" != "${DOCKER_GID}" ]; then \
-        groupmod -g "${DOCKER_GID}" docker; \
-      fi; \
-    else \
-      addgroup -g ${DOCKER_GID} docker; \
-    fi
-
 RUN adduser -u 1000 -D -s /bin/bash keiichi && \
-    adduser keiichi docker && \
-    adduser keiichi homelab && \
     adduser keiichi wheel
 
 # Copy rest of repo
 COPY --chown=keiichi:keiichi ansible/filter_plugins/ ./ansible/filter_plugins/
-COPY --chown=keiichi:keiichi profile.d/ /etc/profile.d/
 
 RUN chown -R keiichi:keiichi /homelab
 
