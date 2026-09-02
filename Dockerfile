@@ -43,6 +43,7 @@ RUN adduser -u 1000 -D -s /bin/bash keiichi && \
 
 # Copy rest of repo
 COPY --chown=keiichi:keiichi ansible/filter_plugins/ ./ansible/filter_plugins/
+COPY --chown=keiichi:keiichi profile.d/ /etc/profile.d/
 
 RUN chown -R keiichi:keiichi /homelab
 
