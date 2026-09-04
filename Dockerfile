@@ -41,6 +41,10 @@ RUN echo "%wheel ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 RUN adduser -u 1000 -D -s /bin/bash keiichi && \
     adduser keiichi wheel
 
+RUN mkdir -p /home/keiichi/.ssh && \
+    chown -R keiichi:keiichi /home/keiichi/.ssh && \
+    chmod 700 /home/keiichi/.ssh
+
 # Copy rest of repo
 COPY --chown=keiichi:keiichi ansible/filter_plugins/ ./ansible/filter_plugins/
 COPY --chown=keiichi:keiichi profile.d/ /etc/profile.d/
