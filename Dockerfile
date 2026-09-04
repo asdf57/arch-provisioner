@@ -60,4 +60,4 @@ ENV PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/
     ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins" \
     ANSIBLE_HOST_KEY_CHECKING=False
 
-CMD ["/bin/bash"]
+CMD ["/bin/bash", "--login"]
