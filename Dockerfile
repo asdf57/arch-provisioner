@@ -54,10 +54,4 @@ RUN chown -R keiichi:keiichi /homelab
 
 USER keiichi
 
-ENV PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    ANSIBLE_INVENTORY="/homelab/inventory/inventory.yml" \
-    ANSIBLE_ROLES_PATH="/homelab/ansible/roles" \
-    ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins" \
-    ANSIBLE_HOST_KEY_CHECKING=False
-
 CMD ["/bin/bash", "--login"]
