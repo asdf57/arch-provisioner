@@ -1,4 +1,4 @@
 Host github.com
   HostName github.com
   User git
-  IdentityFile /home/keiichi/id_github
+  IdentityFile /home/keiichi/.ssh/id_github
