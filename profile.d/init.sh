@@ -33,7 +33,7 @@ install_private_key(){
     secret=$(
         curl --fail-with-body \
             --request GET \
-            --header 'Accept: application/yaml' \=
+            --header 'Accept: application/yaml' \
             "$STIGMERGY_API_URL/api/v1alpha1/secrets/${secret_name}"
     ) || return
 
