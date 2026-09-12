@@ -21,7 +21,7 @@ export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
 export ANSIBLE_HOST_KEY_CHECKING=False
 
 setup_bootstrap(){
-    git clone git@github.com:asdf57/ansible-roles.git "$ANSIBLE_ROLES_PATH" || exit 1
+    git clone git@github.com:asdf57/ansible-roles.git "$ANSIBLE_ROLES_PATH" || echo "WARNING: failed to clone ansible roles"
 }
 
 install_private_key(){
@@ -89,9 +89,9 @@ enforce_env_var "CONTAINER_MODE"
 ssh-keyscan github.com >> ~/.ssh/known_hosts
 mkdir -p /home/keiichi/.ssh /home/keiichi/inventory
 
-install_private_key "git-ssh-key" "/home/keiichi/.ssh/id_github" || exit 1
+install_private_key "git-ssh-key" "/home/keiichi/.ssh/id_github" || echo "WARNING: failed to install git ssh key"
 
-git clone git@github.com:asdf57/inventory.git -b "$INVENTORY_PUBLICATION_GROUP" /homelab/inventory || exit 1
+git clone git@github.com:asdf57/inventory.git -b "$INVENTORY_PUBLICATION_GROUP" /homelab/inventory || echo "WARNING: "
 
 if [[ "$CONTAINER_MODE" == "bootstrap" ]]; then
     setup_bootstrap
