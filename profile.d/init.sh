@@ -15,7 +15,7 @@ enforce_env_var(){
 }
 
 export PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-export ANSIBLE_INVENTORY="/homelab/inventory/inventory.yml"
+export ANSIBLE_INVENTORY="${ANSIBLE_INVENTORY:-/homelab/inventory/inventory.yaml}"
 export ANSIBLE_ROLES_PATH="/homelab/roles"
 export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
 export ANSIBLE_HOST_KEY_CHECKING=False
@@ -49,14 +49,26 @@ install_private_key(){
 
 setup_normal(){
     local host
+    local hosts
+    local inventory
     local key_name
     local key_path
     local key_names
     local server
     declare -A installed_keys=()
 
+    if [[ ! -f "$ANSIBLE_INVENTORY" ]]; then
+        echo "Ansible inventory not found: $ANSIBLE_INVENTORY" >&2
+        return 1
+    fi
+
+    inventory=$(ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list) || return
+    hosts=$(printf '%s' "$inventory" | jq -r '._meta.hostvars | keys[]') || return
+
     # For every server in the ansible inventory
     while IFS= read -r host; do
+        [[ -n "$host" ]] || { echo "WARNING: could not find host name!"; continue }
+
         server=$(
             curl --fail-with-body \
                 --request GET \
@@ -77,10 +89,7 @@ setup_normal(){
             install_private_key "$key_name" "$key_path" || return
             installed_keys[$key_name]=1
         done <<< "$key_names"
-    done < <(
-        ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list \
-            | jq -r '._meta.hostvars | keys[]'
-    )
+    done <<< "$hosts"
 }
 
 enforce_env_var "INVENTORY_PUBLICATION_GROUP"
