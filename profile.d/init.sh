@@ -67,7 +67,7 @@ setup_normal(){
 
     # For every server in the ansible inventory
     while IFS= read -r host; do
-        [[ -n "$host" ]] || { echo "WARNING: could not find host name!"; continue }
+        [[ -n "$host" ]] || { echo "WARNING: could not find host name!"; continue; }
 
         server=$(
             curl --fail-with-body \
