@@ -17,11 +17,16 @@ enforce_env_var(){
 export PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export ANSIBLE_INVENTORY="${ANSIBLE_INVENTORY:-/homelab/inventory/inventory.yaml}"
 export ANSIBLE_ROLES_PATH="/homelab/roles"
+export ANSIBLE_PLAYS_PATH="/homelab/plays"
 export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
 export ANSIBLE_HOST_KEY_CHECKING=False
 
 setup_bootstrap(){
-    git clone git@github.com:asdf57/ansible-roles.git "$ANSIBLE_ROLES_PATH" || echo "WARNING: failed to clone ansible roles"
+    tmp_dir=$(mktemp -d)
+    git clone git@github.com:asdf57/ansible-roles.git "$tmp_dir" || echo "WARNING: failed to clone ansible roles"
+    mv "$tmp_dir/roles" "$ANSIBLE_ROLES_PATH"
+    mv "$tmp_dir/plays" "$ANSIBLE_PLAYS_PATH"
+    rm -rf "$tmp_dir"
 }
 
 install_private_key(){
