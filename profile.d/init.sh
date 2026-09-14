@@ -22,8 +22,13 @@ export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
 export ANSIBLE_HOST_KEY_CHECKING=False
 
 setup_bootstrap(){
+    local roles_repo="${GIT_ANSIBLE_ROLES_REPO:-https://github.com/asdf57/ansible-roles.git}"
+    local roles_branch="${GIT_ANSIBLE_ROLES_BRANCH:-main}"
     tmp_dir=$(mktemp -d)
-    git clone git@github.com:asdf57/ansible-roles.git "$tmp_dir" || echo "WARNING: failed to clone ansible roles"
+    git clone --branch "$roles_branch" "$roles_repo" "$tmp_dir" || {
+        echo "Failed to clone bootstrap Ansible roles from $roles_repo" >&2
+        return 1
+    }
     mv "$tmp_dir/roles" "$ANSIBLE_ROLES_PATH"
     mv "$tmp_dir/plays" "$ANSIBLE_PLAYS_PATH"
     rm -rf "$tmp_dir"
@@ -103,13 +108,12 @@ enforce_env_var "CONTAINER_MODE"
 ssh-keyscan github.com >> ~/.ssh/known_hosts
 mkdir -p /home/keiichi/.ssh /home/keiichi/inventory
 
-install_private_key "git-ssh-key" "/home/keiichi/.ssh/id_github" || echo "WARNING: failed to install git ssh key"
-
-git clone git@github.com:asdf57/inventory.git -b "$INVENTORY_PUBLICATION_GROUP" /homelab/inventory || echo "WARNING: "
-
 if [[ "$CONTAINER_MODE" == "bootstrap" ]]; then
     setup_bootstrap
 elif [[ "$CONTAINER_MODE" == "normal" ]]; then
+    install_private_key "git-ssh-key" "/home/keiichi/.ssh/id_github" || echo "WARNING: failed to install git ssh key"
+    git clone "${GIT_INVENTORY_REPO:-git@github.com:asdf57/inventory.git}" \
+        -b "$INVENTORY_PUBLICATION_GROUP" /homelab/inventory || echo "WARNING: failed to clone inventory"
     setup_normal
 else
     echo "Unknown CONTAINER_MODE: $CONTAINER_MODE"
