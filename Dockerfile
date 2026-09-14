@@ -15,7 +15,8 @@ RUN apk add --no-cache \
     openssh \
     coreutils \
     findutils \
-    sudo \  
+    iproute2 \
+    sudo \
     tar \
     build-base \
     uv \
