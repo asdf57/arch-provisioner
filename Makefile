@@ -1,4 +1,4 @@
-IMAGE_NAME ?= arch-provisioner
+IMAGE_NAME ?= homelab
 IMAGE_TAG ?= latest
 
 -include $(ENV_FILE)
