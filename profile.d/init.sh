@@ -14,24 +14,32 @@ enforce_env_var(){
     fi
 }
 
-export PATH="/homelab/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-export ANSIBLE_INVENTORY="${ANSIBLE_INVENTORY:-/homelab/inventory/inventory.yaml}"
-export ANSIBLE_ROLES_PATH="/homelab/roles"
-export ANSIBLE_PLAYS_PATH="/homelab/plays"
-export ANSIBLE_FILTER_PLUGINS="/homelab/ansible/filter_plugins"
-export ANSIBLE_HOST_KEY_CHECKING=False
-
-setup_bootstrap(){
-    local roles_repo="${GIT_ANSIBLE_ROLES_REPO:-https://github.com/asdf57/ansible-roles.git}"
-    local roles_branch="${GIT_ANSIBLE_ROLES_BRANCH:-main}"
-    tmp_dir=$(mktemp -d)
-    git clone --branch "$roles_branch" "$roles_repo" "$tmp_dir" || {
-        echo "Failed to clone bootstrap Ansible roles from $roles_repo" >&2
+checkout_repository(){
+    local repo=$1
+    local ref=$2
+    local checkout=$3
+    [[ ! -e "$checkout" ]] || return 0
+    git clone --filter=blob:none --no-checkout "$repo" "$checkout" || {
+        rm -rf "$checkout"
         return 1
     }
-    mv "$tmp_dir/roles" "$ANSIBLE_ROLES_PATH"
-    mv "$tmp_dir/plays" "$ANSIBLE_PLAYS_PATH"
-    rm -rf "$tmp_dir"
+    git -C "$checkout" fetch --depth 1 origin "$ref" || {
+        rm -rf "$checkout"
+        return 1
+    }
+    git -C "$checkout" checkout --detach FETCH_HEAD || {
+        rm -rf "$checkout"
+        return 1
+    }
+}
+
+setup_ansible(){
+    if [[ -d "$ANSIBLE_ROLES_PATH" && -d "$ANSIBLE_PLAYS_PATH" ]]; then
+        return 0
+    fi
+    checkout_repository "$GIT_ANSIBLE_ROLES_REPO" "$GIT_ANSIBLE_ROLES_REF" /homelab/ansible-roles || return
+    ln -s /homelab/ansible-roles/roles "$ANSIBLE_ROLES_PATH"
+    ln -s /homelab/ansible-roles/plays "$ANSIBLE_PLAYS_PATH"
 }
 
 install_private_key(){
@@ -102,18 +110,25 @@ setup_normal(){
     done <<< "$hosts"
 }
 
-enforce_env_var "INVENTORY_PUBLICATION_GROUP"
+enforce_env_var "INVENTORY_CAPTURE_GROUP"
 enforce_env_var "CONTAINER_MODE"
+enforce_env_var "GIT_ANSIBLE_ROLES_REPO" "https://github.com/asdf57/ansible-roles.git"
+enforce_env_var "GIT_ANSIBLE_ROLES_REF" "main"
 
-ssh-keyscan github.com >> ~/.ssh/known_hosts
-mkdir -p /home/keiichi/.ssh /home/keiichi/inventory
+mkdir -p /home/keiichi/.ssh
+if ! setup_ansible; then
+    echo "Failed to check out Ansible roles from $GIT_ANSIBLE_ROLES_REPO at $GIT_ANSIBLE_ROLES_REF" >&2
+    exit 1
+fi
 
-if [[ "$CONTAINER_MODE" == "bootstrap" ]]; then
-    setup_bootstrap
+if [[ "$CONTAINER_MODE" == "init" ]]; then
+    :
 elif [[ "$CONTAINER_MODE" == "normal" ]]; then
-    install_private_key "git-ssh-key" "/home/keiichi/.ssh/id_github" || echo "WARNING: failed to install git ssh key"
-    git clone "${GIT_INVENTORY_REPO:-git@github.com:asdf57/inventory.git}" \
-        -b "$INVENTORY_PUBLICATION_GROUP" /homelab/inventory || echo "WARNING: failed to clone inventory"
+    mkdir -p /homelab/inventory
+    curl --fail-with-body \
+        --header 'Accept: application/yaml' \
+        "$STIGMERGY_API_URL/api/v1alpha1/inventory-capture-groups/${INVENTORY_CAPTURE_GROUP}" \
+        | yq e '.status.inventory' - > "$ANSIBLE_INVENTORY"
     setup_normal
 else
     echo "Unknown CONTAINER_MODE: $CONTAINER_MODE"

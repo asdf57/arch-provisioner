@@ -1,4 +1,7 @@
 out/
+.env
+.env.local
+.env.shared
 .env.runtime
 **/venv/
 **/*.pem

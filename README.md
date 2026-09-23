@@ -1,57 +1,22 @@
 # arch-provisioner
-A comprehensive homelab automation platform designed for automated provisioning and remote management of nodes.
 
-## Getting Started
+Operator and provisioning image for the homelab. At startup it checks out the
+configured `ansible-roles` revision from GitHub, so no source repository is
+required on the host and playbook updates do not require rebuilding the image.
+Init mode obtains the platform repositories as part of convergence. Normal
+mode checks out only Ansible roles and fetches live inventory and SSH keys.
 
-### Related Repos
-- [prov2](https://github.com/asdf57/prov2)
-- [inventory](https://github.com/asdf57/inventory)
-- [hostvars](https://github.com/asdf57/hostvars)
-- [commands_data](github.com/asdf57/commands_data)
-- [ansible-roles](https://github.com/asdf57/ansible-roles)
+```sh
+make build
+```
 
-### Prerequisites
-- Docker
-- `make` build tool
-- Access to target infrastructure nodes
+No checkout is required on an operator host:
 
-### Installation & Setup
-1. **Create Shared Bootstrap Config**
-   - Copy `.env.shared.example` to `.env.shared`
-   - Fill in the secure shared values you want every infra node to use
+```sh
+docker build -t homelab:latest \
+  https://github.com/asdf57/arch-provisioner.git#main
+```
 
-2. **Initialize Infrastructure**
-   ```bash
-   make init-platform
-   ```
-   This single command now:
-   - detects host-local values and writes `.env.local`
-   - creates the `homelab` group and host data directory
-   - generates missing SSH keys
-   - renders `.env` from `.env.shared` and `.env.local`
-   - Deploys the infrastructure compose cluster
-     - Provisioning API
-     - nginx file store
-     - Vault
-     - Concourse CI/CD
-   - Builds and uploads netboot images for Debian and Arch Linux distros
-
-3. **Deploy Configuration**
-   ```bash
-   hlcli upload <schema_file_path>
-   ```
-   Upload your schema file to the provisioning API to initialize a new node.
-
-4. **Provision Servers**
-   ```bash
-   hlcli init servers
-   ```
-   or
-   ```bash
-   hlcli init server <server_name>
-   ```
-   Initialize server provisioning based on the uploaded configuration schema.
-
-## Architecture
-
-The platform operates through a containerized microservices architecture, supporting both bare metal and containerized development environments. The system provides automated netboot capabilities and a common homelab environment to manage nodes seamlessly.
+Override `IMAGE_NAME` or `IMAGE_TAG` as needed. `GIT_ANSIBLE_ROLES_REPO` and
+`GIT_ANSIBLE_ROLES_REF` select the runtime checkout. Use `homelabc init` to
+initialize the platform and `homelabc run` to open an operator shell.
