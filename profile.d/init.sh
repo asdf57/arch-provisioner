@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+export PATH="/homelab/.venv/bin:$PATH"
+
 enforce_env_var(){
     local var_name=$1
     local default_value=$2
