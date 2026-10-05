@@ -20,3 +20,10 @@ docker build -t homelab:latest \
 Override `IMAGE_NAME` or `IMAGE_TAG` as needed. `GIT_ANSIBLE_ROLES_REPO` and
 `GIT_ANSIBLE_ROLES_REF` select the runtime checkout. Use `homelabc init` to
 initialize the platform and `homelabc run` to open an operator shell.
+# Certificate-based management runner
+
+Normal mode requires explicit runner credentials via `ANSIBLE_PRIVATE_KEY_FILE`,
+`ANSIBLE_CERTIFICATE_FILE`, `ANSIBLE_KNOWN_HOSTS_FILE`, and
+`STIGMERGY_API_TOKEN_FILE`, or the equivalent credential-valued environment
+parameters for Concourse. It no longer retrieves per-server private keys from
+Stigmergy. Missing credentials stop initialization; host-key checking is enabled.
