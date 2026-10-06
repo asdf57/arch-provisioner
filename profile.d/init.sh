@@ -14,19 +14,18 @@ runner_setup() {
         ln -s /homelab/ansible-roles/plays "$ANSIBLE_PLAYS_PATH" || return
     fi
     [[ "$CONTAINER_MODE" != init ]] || return 0
-    [[ "$CONTAINER_MODE" == normal ]] || { echo 'Unknown container mode' >&2; return 1; }
+    [[ "$CONTAINER_MODE" == normal || "$CONTAINER_MODE" == operator ]] || { echo 'Unknown container mode' >&2; return 1; }
     : "${INVENTORY_CAPTURE_GROUP:?Inventory capture group is required}"
     [[ "$INVENTORY_CAPTURE_GROUP" =~ ^[a-z0-9][-a-z0-9.]*$ ]] || return 1
     : "${STIGMERGY_API_URL:?API URL is required}"
-    # Only explicit runner credentials. Never enumerate Server keys or Secrets.
+    # Explicit client credentials only. No API Secret/private-key downloads.
     umask 077
     mkdir -p /home/keiichi/.ssh /homelab/inventory || return
     local source destination variable
-    for variable in ANSIBLE_PRIVATE_KEY ANSIBLE_CERTIFICATE ANSIBLE_KNOWN_HOSTS; do
+    for variable in ANSIBLE_PRIVATE_KEY ANSIBLE_CERTIFICATE; do
         case "$variable" in
             ANSIBLE_PRIVATE_KEY) destination=/home/keiichi/.ssh/id_ansible_mgmt; source=${ANSIBLE_PRIVATE_KEY_FILE:-} ;;
             ANSIBLE_CERTIFICATE) destination=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub; source=${ANSIBLE_CERTIFICATE_FILE:-} ;;
-            ANSIBLE_KNOWN_HOSTS) destination=/home/keiichi/.ssh/known_hosts; source=${ANSIBLE_KNOWN_HOSTS_FILE:-} ;;
         esac
         if [[ -n "$source" ]]; then
             if [[ "$(readlink -f -- "$source")" == "$destination" ]]; then
@@ -43,7 +42,6 @@ runner_setup() {
     done
     ssh-keygen -y -f /home/keiichi/.ssh/id_ansible_mgmt </dev/null >/dev/null || return
     ssh-keygen -L -f /home/keiichi/.ssh/id_ansible_mgmt-cert.pub >/dev/null || return
-    [[ -s /home/keiichi/.ssh/known_hosts ]] || return 1
     if [[ -n "${STIGMERGY_API_TOKEN_FILE:-}" ]]; then
         export STIGMERGY_API_TOKEN
         STIGMERGY_API_TOKEN=$(< "$STIGMERGY_API_TOKEN_FILE") || return
@@ -57,8 +55,31 @@ runner_setup() {
     export STIGMERGY_API_TOKEN
     export ANSIBLE_REMOTE_USER=ansible
     export ANSIBLE_PRIVATE_KEY_FILE=/home/keiichi/.ssh/id_ansible_mgmt
-    export ANSIBLE_SSH_ARGS='-o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/keiichi/.ssh/known_hosts -o CertificateFile=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub'
-    unset ANSIBLE_PRIVATE_KEY ANSIBLE_CERTIFICATE ANSIBLE_KNOWN_HOSTS
+    export ANSIBLE_CERTIFICATE_FILE=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub
+    unset ANSIBLE_PRIVATE_KEY ANSIBLE_CERTIFICATE
+    [[ "$CONTAINER_MODE" != operator ]] || return 0
+    export ANSIBLE_SSH_ARGS='-o IdentitiesOnly=yes -o IdentityAgent=none -o ForwardAgent=no -o UpdateHostKeys=no -o HostKeyAlgorithms=ssh-ed25519 -o GlobalKnownHostsFile=/dev/null -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/keiichi/.ssh/known_hosts -o CertificateFile=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub'
+    # Explicit trust is supported for non-Server administrative inventories.
+    source=${ANSIBLE_KNOWN_HOSTS_FILE:-}
+    if [[ -z "$source" && -z "${ANSIBLE_KNOWN_HOSTS:-}" ]]; then
+        export ANSIBLE_KNOWN_HOSTS_FILE=/home/keiichi/.ssh/known_hosts
+        python3 /homelab/ansible-roles/operators/runner_trust.py || return
+        ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list >/dev/null || return
+        return 0
+    fi
+    destination=/home/keiichi/.ssh/known_hosts
+    if [[ -n "$source" ]]; then
+        if [[ "$(readlink -f -- "$source")" != "$destination" ]]; then
+            install -m 0600 "$source" "$destination" || return
+        else
+            chmod 0600 "$destination" || return
+        fi
+    else
+        printf '%s\n' "$ANSIBLE_KNOWN_HOSTS" > "$destination" || return
+    fi
+    [[ -s "$destination" ]] || return 1
+    export ANSIBLE_KNOWN_HOSTS_FILE="$destination"
+    unset ANSIBLE_KNOWN_HOSTS
     local inventory
     inventory=$(curl --fail --silent --show-error \
         --header @/dev/fd/3 \
