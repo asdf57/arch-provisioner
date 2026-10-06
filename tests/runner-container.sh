@@ -25,8 +25,28 @@ source /source/profile.d/init.sh
 [[ -f /home/keiichi/.ssh/id_ansible_mgmt-cert.pub ]]
 ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list | jq -e '._meta.hostvars.fixture.ansible_host == "127.0.0.1"' >/dev/null
 source /source/profile.d/init.sh
+certificate=$(< "$workspace/key-cert.pub")
+for suffix in '' $'\n' $'\n\n'; do
+    if output=$(ANSIBLE_CERTIFICATE="$certificate$suffix" /bin/bash --noprofile --norc -c \
+        'unset ANSIBLE_CERTIFICATE_FILE; source /source/profile.d/init.sh' 2>&1); then
+        [[ "$output" != *'invalid key'* ]] || { echo "$output" >&2; exit 1; }
+    else
+        echo "$output" >&2; exit 1
+    fi
+    [[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
+    [[ "$(< /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" == "$certificate" ]]
+done
+# File input normalization also works on repeated initialization.
+printf '%s\n\n\n' "$certificate" > "$workspace/padded-cert.pub"
+if output=$(ANSIBLE_CERTIFICATE_FILE="$workspace/padded-cert.pub" /bin/bash --noprofile --norc -c \
+    'source /source/profile.d/init.sh; source /source/profile.d/init.sh' 2>&1); then
+    [[ "$output" != *'invalid key'* ]] || { echo "$output" >&2; exit 1; }
+else
+    echo "$output" >&2; exit 1
+fi
+[[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
 if failure=$(/bin/bash --noprofile --norc -c 'unset STIGMERGY_API_TOKEN STIGMERGY_API_TOKEN_FILE; source /source/profile.d/init.sh' 2>&1); then
     echo 'Missing API credentials did not stop the runner' >&2; exit 1
 fi
 [[ "$failure" == *'API bearer token is required'* ]] || { echo "$failure" >&2; exit 1; }
-echo 'PASS: explicit runner credentials, bearer authentication, no Secret downloads, fail-closed initialization'
+echo 'PASS: certificate newline normalization, explicit runner credentials, bearer authentication, no Secret downloads, fail-closed initialization'

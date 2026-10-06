@@ -40,6 +40,11 @@ runner_setup() {
             return 1
         fi
     done
+    # OpenSSH certificates already end in LF. Normalize both environment and
+    # file inputs so validation does not interpret trailing blank lines as keys.
+    local certificate
+    certificate=$(< /home/keiichi/.ssh/id_ansible_mgmt-cert.pub) || return
+    printf '%s\n' "$certificate" > /home/keiichi/.ssh/id_ansible_mgmt-cert.pub || return
     ssh-keygen -y -f /home/keiichi/.ssh/id_ansible_mgmt </dev/null >/dev/null || return
     ssh-keygen -L -f /home/keiichi/.ssh/id_ansible_mgmt-cert.pub >/dev/null || return
     if [[ -n "${STIGMERGY_API_TOKEN_FILE:-}" ]]; then
