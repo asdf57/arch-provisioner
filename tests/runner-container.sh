@@ -29,6 +29,11 @@ for attempt in 1 2; do
     [[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
     [[ "$(stat -c %a /home/keiichi/.ssh/id_ansible_mgmt)" == 600 ]]
     grep -q '^server-fixture-uid ssh-ed25519 ' /home/keiichi/.ssh/known_hosts
+    [[ "$(stat -c %a /home/keiichi/.ssh/config)" == 600 ]]
+    ssh_config=$(ssh -G fixture 2>/dev/null)
+    grep -q '^hostname 127.0.0.1$' <<< "$ssh_config"
+    grep -q '^hostkeyalias server-fixture-uid$' <<< "$ssh_config"
+    grep -q '^stricthostkeychecking true$' <<< "$ssh_config"
     ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list | \
         jq -e '._meta.hostvars.fixture.ansible_host == "127.0.0.1"' >/dev/null
 done
@@ -53,4 +58,4 @@ if failure=$(STIGMERGY_API_TOKEN=wrong /bin/bash --noprofile --norc -c \
     echo 'Unauthorized API access did not stop the runner' >&2; exit 1
 fi
 [[ "$failure" == *'Runner credential retrieval failed'* && "$failure" != *'PRIVATE KEY'* ]]
-echo 'PASS: token-only startup, current key/certificate retrieval, strict trust and fail-closed auth'
+echo 'PASS: token-only startup, inventory SSH config, strict trust and fail-closed auth'

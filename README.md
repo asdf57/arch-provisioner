@@ -5,7 +5,7 @@ configured `ansible-roles` revision from GitHub, so no source repository is
 required on the host and playbook updates do not require rebuilding the image.
 Init mode obtains the platform repositories as part of convergence. Normal
 mode checks out Ansible roles and resolves live inventory and verified public
-Server host identities. Private runner credentials are supplied explicitly.
+Server host identities. Normal mode fetches existing runner credentials using the API token.
 
 ```sh
 make build
@@ -41,6 +41,14 @@ verified Server identities using Server-UID aliases. An explicit
 `ANSIBLE_KNOWN_HOSTS_FILE` is optional for non-Server administrative inventories.
 Missing credentials or unverified managed identities stop initialization.
 The normal runner never retrieves per-server private keys or performs TOFU.
+
+Normal mode also generates `/home/keiichi/.ssh/config` from resolved inventory,
+including inherited host variables. Run `ssh beelink` (or any captured inventory
+host name) directly: the configuration selects its address, user, port, runner
+certificate and verified Server-UID host-key alias. No `/etc/hosts` modification
+or shell wrapper is needed. Start a fresh container to refresh inventory and
+credentials. This disposable container owns the generated SSH configuration;
+unsupported inventory SSH options fail initialization rather than being ignored.
 
 `CONTAINER_MODE=operator` takes explicit client credentials via
 `ANSIBLE_PRIVATE_KEY_FILE`/`ANSIBLE_CERTIFICATE_FILE` or their credential-valued

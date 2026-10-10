@@ -71,10 +71,16 @@ runner_setup() {
     export ANSIBLE_SSH_ARGS='-o IdentitiesOnly=yes -o IdentityAgent=none -o ForwardAgent=no -o UpdateHostKeys=no -o HostKeyAlgorithms=ssh-ed25519 -o GlobalKnownHostsFile=/dev/null -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/keiichi/.ssh/known_hosts -o CertificateFile=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub'
     # Explicit trust is supported for non-Server administrative inventories.
     source=${ANSIBLE_KNOWN_HOSTS_FILE:-}
+    # Re-sourcing the profile must refresh generated trust, not mistake it for
+    # caller-supplied trust and replace UID-qualified inventory with raw inventory.
+    if [[ -n "${HOMELAB_DERIVED_KNOWN_HOSTS:-}" && "$source" == "$HOMELAB_DERIVED_KNOWN_HOSTS" ]]; then
+        source=''
+    fi
     if [[ -z "$source" && -z "${ANSIBLE_KNOWN_HOSTS:-}" ]]; then
         export ANSIBLE_KNOWN_HOSTS_FILE=/home/keiichi/.ssh/known_hosts
+        export HOMELAB_DERIVED_KNOWN_HOSTS="$ANSIBLE_KNOWN_HOSTS_FILE"
         python3 /homelab/ansible-roles/operators/runner_trust.py || return
-        ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list >/dev/null || return
+        python3 /etc/profile.d/inventory_ssh.py || return
         return 0
     fi
     destination=/home/keiichi/.ssh/known_hosts
@@ -97,7 +103,7 @@ runner_setup() {
         "$STIGMERGY_API_URL/api/v1alpha1/inventory-capture-groups/$INVENTORY_CAPTURE_GROUP" \
         3<<< "Authorization: Bearer $STIGMERGY_API_TOKEN") || return
     printf '%s' "$inventory" | yq e '.status.inventory' - > "$ANSIBLE_INVENTORY" || return
-    ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list >/dev/null || return
+    python3 /etc/profile.d/inventory_ssh.py || return
 }
 
 if ! runner_setup; then

@@ -13,6 +13,7 @@ help:
 
 check:
 	bash -n profile.d/init.sh
+	python3 -m unittest discover -s tests -p 'test_*.py'
 
 build: check
 	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
