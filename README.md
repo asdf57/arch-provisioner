@@ -23,16 +23,29 @@ Override `IMAGE_NAME` or `IMAGE_TAG` as needed. `GIT_ANSIBLE_ROLES_REPO` and
 initialize the platform and `homelabc run` to open an operator shell.
 # Certificate-based management runner
 
-Normal mode requires explicit runner credentials via `ANSIBLE_PRIVATE_KEY_FILE`,
-`ANSIBLE_CERTIFICATE_FILE`, and
-`STIGMERGY_API_TOKEN_FILE`, or the equivalent credential-valued environment
-parameters for Concourse. It derives strict known_hosts from API-managed,
+Normal mode requires only `STIGMERGY_API_TOKEN_FILE` (or `STIGMERGY_API_TOKEN`).
+At startup it reads `SSHKeyPair/ansible-runner`, its UID-qualified owned Secret,
+and `SSHCertificate/ansible-runner` from the API. It fetches the existing identity;
+it never creates, signs or rotates keys. It verifies resource readiness, ownership,
+validity and private/public/certificate subject agreement before writing files
+under `/home/keiichi/.ssh` (0700 directory, 0600 files). Credentials live only in
+the disposable container. Start a fresh shell to fetch a renewed certificate;
+there is no background renewal within a running shell.
+
+The token must permit GET of these resources and their referenced Secret;
+ordinary runner/operator tokens do not gain Secret access automatically. An admin
+token works with the current policy. Do not broaden fleet operator permissions
+just to support interactive shells. Initialization refuses auth failures or stale,
+invalid or mismatched credentials. It derives strict known_hosts from API-managed,
 verified Server identities using Server-UID aliases. An explicit
 `ANSIBLE_KNOWN_HOSTS_FILE` is optional for non-Server administrative inventories.
 Missing credentials or unverified managed identities stop initialization.
 The normal runner never retrieves per-server private keys or performs TOFU.
 
-`CONTAINER_MODE=operator` initializes API and client SSH credentials but leaves
+`CONTAINER_MODE=operator` takes explicit client credentials via
+`ANSIBLE_PRIVATE_KEY_FILE`/`ANSIBLE_CERTIFICATE_FILE` or their credential-valued
+environment counterparts supplied by Concourse/OpenBao. It does not fetch API
+Secrets and leaves
 target inventory and host verification to the bounded external operator. The
 host-key operator lives in ansible-roles/operators/ssh_host_keys.py, and must
 construct scoped trust before running Ansible. Its Concourse pipeline supplies

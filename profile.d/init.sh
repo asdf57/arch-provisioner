@@ -18,35 +18,6 @@ runner_setup() {
     : "${INVENTORY_CAPTURE_GROUP:?Inventory capture group is required}"
     [[ "$INVENTORY_CAPTURE_GROUP" =~ ^[a-z0-9][-a-z0-9.]*$ ]] || return 1
     : "${STIGMERGY_API_URL:?API URL is required}"
-    # Explicit client credentials only. No API Secret/private-key downloads.
-    umask 077
-    mkdir -p /home/keiichi/.ssh /homelab/inventory || return
-    local source destination variable
-    for variable in ANSIBLE_PRIVATE_KEY ANSIBLE_CERTIFICATE; do
-        case "$variable" in
-            ANSIBLE_PRIVATE_KEY) destination=/home/keiichi/.ssh/id_ansible_mgmt; source=${ANSIBLE_PRIVATE_KEY_FILE:-} ;;
-            ANSIBLE_CERTIFICATE) destination=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub; source=${ANSIBLE_CERTIFICATE_FILE:-} ;;
-        esac
-        if [[ -n "$source" ]]; then
-            if [[ "$(readlink -f -- "$source")" == "$destination" ]]; then
-                chmod 0600 "$destination" || return
-            else
-                install -m 0600 "$source" "$destination" || return
-            fi
-        elif [[ -n "${!variable:-}" ]]; then
-            printf '%s\n' "${!variable}" > "$destination" || return
-        else
-            echo "Explicit $variable or ${variable}_FILE is required" >&2
-            return 1
-        fi
-    done
-    # OpenSSH certificates already end in LF. Normalize both environment and
-    # file inputs so validation does not interpret trailing blank lines as keys.
-    local certificate
-    certificate=$(< /home/keiichi/.ssh/id_ansible_mgmt-cert.pub) || return
-    printf '%s\n' "$certificate" > /home/keiichi/.ssh/id_ansible_mgmt-cert.pub || return
-    ssh-keygen -y -f /home/keiichi/.ssh/id_ansible_mgmt </dev/null >/dev/null || return
-    ssh-keygen -L -f /home/keiichi/.ssh/id_ansible_mgmt-cert.pub >/dev/null || return
     if [[ -n "${STIGMERGY_API_TOKEN_FILE:-}" ]]; then
         export STIGMERGY_API_TOKEN
         STIGMERGY_API_TOKEN=$(< "$STIGMERGY_API_TOKEN_FILE") || return
@@ -58,6 +29,40 @@ runner_setup() {
         *) echo 'Use HTTPS for API credentials (loopback HTTP is development-only)' >&2; return 1 ;;
     esac
     export STIGMERGY_API_TOKEN
+    umask 077
+    mkdir -p /home/keiichi/.ssh /homelab/inventory || return
+    local source destination variable
+    if [[ "$CONTAINER_MODE" == normal ]]; then
+        # Interactive shells resolve the existing client identity using the API.
+        python3 /homelab/ansible-roles/operators/runner_credentials.py || return
+    else
+        # Concourse operators receive narrowly scoped credentials from OpenBao.
+        for variable in ANSIBLE_PRIVATE_KEY ANSIBLE_CERTIFICATE; do
+            case "$variable" in
+                ANSIBLE_PRIVATE_KEY) destination=/home/keiichi/.ssh/id_ansible_mgmt; source=${ANSIBLE_PRIVATE_KEY_FILE:-} ;;
+                ANSIBLE_CERTIFICATE) destination=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub; source=${ANSIBLE_CERTIFICATE_FILE:-} ;;
+            esac
+            if [[ -n "$source" ]]; then
+                if [[ "$(readlink -f -- "$source")" == "$destination" ]]; then
+                    chmod 0600 "$destination" || return
+                else
+                    install -m 0600 "$source" "$destination" || return
+                fi
+            elif [[ -n "${!variable:-}" ]]; then
+                printf '%s\n' "${!variable}" > "$destination" || return
+            else
+                echo "Explicit $variable or ${variable}_FILE is required" >&2
+                return 1
+            fi
+        done
+    fi
+    # OpenSSH certificates already end in LF. Normalize both environment and
+    # file inputs so validation does not interpret trailing blank lines as keys.
+    local certificate
+    certificate=$(< /home/keiichi/.ssh/id_ansible_mgmt-cert.pub) || return
+    printf '%s\n' "$certificate" > /home/keiichi/.ssh/id_ansible_mgmt-cert.pub || return
+    ssh-keygen -y -f /home/keiichi/.ssh/id_ansible_mgmt </dev/null >/dev/null || return
+    ssh-keygen -L -f /home/keiichi/.ssh/id_ansible_mgmt-cert.pub >/dev/null || return
     export ANSIBLE_REMOTE_USER=ansible
     export ANSIBLE_PRIVATE_KEY_FILE=/home/keiichi/.ssh/id_ansible_mgmt
     export ANSIBLE_CERTIFICATE_FILE=/home/keiichi/.ssh/id_ansible_mgmt-cert.pub

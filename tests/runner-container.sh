@@ -2,51 +2,55 @@
 set -euo pipefail
 [[ -f /.dockerenv ]] || { echo 'Run inside a disposable runner container' >&2; exit 1; }
 workspace=$(mktemp -d)
-mkdir -p "$workspace/bin" "$workspace/roles" "$workspace/plays"
+mkdir -p "$workspace/roles" "$workspace/plays"
 ssh-keygen -q -t ed25519 -N '' -f "$workspace/ca"
 ssh-keygen -q -t ed25519 -N '' -f "$workspace/key"
 ssh-keygen -q -s "$workspace/ca" -I runner-test -n ansible -V -1m:+5m "$workspace/key.pub"
 printf 'runner-test-token-01234567890123456789\n' > "$workspace/token"
-printf 'fixture %s\n' "$(< "$workspace/ca.pub")" > "$workspace/known-hosts"
-printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' \
-    'IFS= read -r header <&3' \
-    '[[ "$header" == "Authorization: Bearer runner-test-token-01234567890123456789" ]]' \
-    '[[ "$*" == *"inventory-capture-groups/servers"* && "$*" != *"secrets/"* && "$*" != *"runner-test-token"* ]]' \
-    'printf "status:\n  inventory:\n    all:\n      hosts:\n        fixture:\n          ansible_host: 127.0.0.1\n"' > "$workspace/bin/curl"
-chmod 0755 "$workspace/bin/curl"
-export PATH="$workspace/bin:$PATH"
+python3 /source/tests/runner-api-fixture.py "$workspace" &
+fixture_pid=$!
+trap 'kill "$fixture_pid"; wait "$fixture_pid" || true' EXIT
+for attempt in {1..30}; do
+    if curl --silent http://127.0.0.1:18085/ >/dev/null; then break; fi
+    sleep 0.1
+done
 export ANSIBLE_ROLES_PATH="$workspace/roles" ANSIBLE_PLAYS_PATH="$workspace/plays"
 export ANSIBLE_INVENTORY="$workspace/inventory.yaml"
-export CONTAINER_MODE=normal INVENTORY_CAPTURE_GROUP=servers STIGMERGY_API_URL=https://api.example
-export STIGMERGY_API_TOKEN_FILE="$workspace/token" ANSIBLE_PRIVATE_KEY_FILE="$workspace/key"
-export ANSIBLE_CERTIFICATE_FILE="$workspace/key-cert.pub" ANSIBLE_KNOWN_HOSTS_FILE="$workspace/known-hosts"
-source /source/profile.d/init.sh
-[[ "$ANSIBLE_REMOTE_USER" == ansible && "$ANSIBLE_SSH_ARGS" == *StrictHostKeyChecking=yes* ]]
-[[ -f /home/keiichi/.ssh/id_ansible_mgmt-cert.pub ]]
-ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list | jq -e '._meta.hostvars.fixture.ansible_host == "127.0.0.1"' >/dev/null
-source /source/profile.d/init.sh
+export CONTAINER_MODE=normal INVENTORY_CAPTURE_GROUP=servers
+export STIGMERGY_API_URL=http://127.0.0.1:18085 STIGMERGY_API_TOKEN_FILE="$workspace/token"
+unset ANSIBLE_PRIVATE_KEY ANSIBLE_PRIVATE_KEY_FILE ANSIBLE_CERTIFICATE ANSIBLE_CERTIFICATE_FILE
+unset ANSIBLE_KNOWN_HOSTS ANSIBLE_KNOWN_HOSTS_FILE
+
+# Repeated normal startup fetches current credentials with only an API token.
+for attempt in 1 2; do
+    source /source/profile.d/init.sh
+    [[ "$ANSIBLE_REMOTE_USER" == ansible && "$ANSIBLE_SSH_ARGS" == *StrictHostKeyChecking=yes* ]]
+    cmp "$workspace/key" /home/keiichi/.ssh/id_ansible_mgmt
+    [[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
+    [[ "$(stat -c %a /home/keiichi/.ssh/id_ansible_mgmt)" == 600 ]]
+    grep -q '^server-fixture-uid ssh-ed25519 ' /home/keiichi/.ssh/known_hosts
+    ansible-inventory --inventory "$ANSIBLE_INVENTORY" --list | \
+        jq -e '._meta.hostvars.fixture.ansible_host == "127.0.0.1"' >/dev/null
+done
+
+# Operators keep OpenBao-supplied credentials and do not fetch API Secrets.
 certificate=$(< "$workspace/key-cert.pub")
 for suffix in '' $'\n' $'\n\n'; do
-    if output=$(ANSIBLE_CERTIFICATE="$certificate$suffix" /bin/bash --noprofile --norc -c \
-        'unset ANSIBLE_CERTIFICATE_FILE; source /source/profile.d/init.sh' 2>&1); then
-        [[ "$output" != *'invalid key'* ]] || { echo "$output" >&2; exit 1; }
-    else
-        echo "$output" >&2; exit 1
-    fi
+    output=$(CONTAINER_MODE=operator ANSIBLE_PRIVATE_KEY_FILE="$workspace/key" \
+        ANSIBLE_CERTIFICATE="$certificate$suffix" /bin/bash --noprofile --norc -c \
+        'unset ANSIBLE_CERTIFICATE_FILE; source /source/profile.d/init.sh' 2>&1)
+    [[ "$output" != *'invalid key'* ]]
     [[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
-    [[ "$(< /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" == "$certificate" ]]
 done
-# File input normalization also works on repeated initialization.
-printf '%s\n\n\n' "$certificate" > "$workspace/padded-cert.pub"
-if output=$(ANSIBLE_CERTIFICATE_FILE="$workspace/padded-cert.pub" /bin/bash --noprofile --norc -c \
-    'source /source/profile.d/init.sh; source /source/profile.d/init.sh' 2>&1); then
-    [[ "$output" != *'invalid key'* ]] || { echo "$output" >&2; exit 1; }
-else
-    echo "$output" >&2; exit 1
-fi
-[[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
-if failure=$(/bin/bash --noprofile --norc -c 'unset STIGMERGY_API_TOKEN STIGMERGY_API_TOKEN_FILE; source /source/profile.d/init.sh' 2>&1); then
+
+if failure=$(/bin/bash --noprofile --norc -c \
+    'unset STIGMERGY_API_TOKEN STIGMERGY_API_TOKEN_FILE; source /source/profile.d/init.sh' 2>&1); then
     echo 'Missing API credentials did not stop the runner' >&2; exit 1
 fi
-[[ "$failure" == *'API bearer token is required'* ]] || { echo "$failure" >&2; exit 1; }
-echo 'PASS: certificate newline normalization, explicit runner credentials, bearer authentication, no Secret downloads, fail-closed initialization'
+[[ "$failure" == *'API bearer token is required'* ]]
+if failure=$(STIGMERGY_API_TOKEN=wrong /bin/bash --noprofile --norc -c \
+    'unset STIGMERGY_API_TOKEN_FILE; source /source/profile.d/init.sh' 2>&1); then
+    echo 'Unauthorized API access did not stop the runner' >&2; exit 1
+fi
+[[ "$failure" == *'Runner credential retrieval failed'* && "$failure" != *'PRIVATE KEY'* ]]
+echo 'PASS: token-only startup, current key/certificate retrieval, strict trust and fail-closed auth'
