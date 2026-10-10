@@ -38,3 +38,10 @@ host-key operator lives in ansible-roles/operators/ssh_host_keys.py, and must
 construct scoped trust before running Ansible. Its Concourse pipeline supplies
 a versioned Git input; it does not clone an unrelated latest checkout. The
 generic image contains runtime dependencies, not host-specific key material.
+
+Ansible uses the standard callback with skipped tasks hidden and YAML results.
+Executed tasks, failures, warnings and recaps remain visible. Fact injection is
+disabled: plays use `ansible_facts`. Automated SSH runs without a pseudo-terminal
+so terminal context sequences cannot contaminate module JSON. External operators
+also set these options directly, so their logging fixes do not require an image
+rebuild; the image configuration covers ordinary Command playbook invocations.
