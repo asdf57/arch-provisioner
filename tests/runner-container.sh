@@ -38,15 +38,36 @@ for attempt in 1 2; do
         jq -e '._meta.hostvars.fixture.ansible_host == "127.0.0.1"' >/dev/null
 done
 
-# Operators keep OpenBao-supplied credentials and do not fetch API Secrets.
+# Commands and operators must work with a token forbidden from client Secrets.
 certificate=$(< "$workspace/key-cert.pub")
-for suffix in '' $'\n' $'\n\n'; do
-    output=$(CONTAINER_MODE=operator ANSIBLE_PRIVATE_KEY_FILE="$workspace/key" \
-        ANSIBLE_CERTIFICATE="$certificate$suffix" /bin/bash --noprofile --norc -c \
-        'unset ANSIBLE_CERTIFICATE_FILE; source /source/profile.d/init.sh' 2>&1)
-    [[ "$output" != *'invalid key'* ]]
-    [[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
+for mode in command operator; do
+    for suffix in '' $'\n' $'\n\n'; do
+        output=$(CONTAINER_MODE="$mode" STIGMERGY_API_TOKEN=command-test-token \
+            ANSIBLE_PRIVATE_KEY_FILE="$workspace/key" ANSIBLE_CERTIFICATE="$certificate$suffix" \
+            /bin/bash --noprofile --norc -ec \
+            'unset STIGMERGY_API_TOKEN_FILE ANSIBLE_CERTIFICATE_FILE
+             source /source/profile.d/init.sh
+             if [[ "$CONTAINER_MODE" == command ]]; then
+                 settings=$(ssh -G fixture 2>/dev/null)
+                 grep -q "^hostkeyalias server-fixture-uid$" <<< "$settings"
+                 ansible-inventory --list >/dev/null
+                 echo "PASS: Command body runs with inventory and strict trust"
+             fi' 2>&1)
+        [[ "$output" != *'invalid key'* ]]
+        [[ "$(wc -l < /home/keiichi/.ssh/id_ansible_mgmt-cert.pub)" -eq 1 ]]
+        if [[ "$mode" == command ]]; then
+            [[ "$output" == *'PASS: Command body runs'* ]]
+        fi
+    done
 done
+
+# Supplied credentials are mandatory even if the token could retrieve Secrets.
+if failure=$(CONTAINER_MODE=command /bin/bash --noprofile --norc -c \
+    'unset ANSIBLE_PRIVATE_KEY ANSIBLE_PRIVATE_KEY_FILE ANSIBLE_CERTIFICATE ANSIBLE_CERTIFICATE_FILE
+     source /source/profile.d/init.sh' 2>&1); then
+    echo 'Command without supplied credentials did not stop' >&2; exit 1
+fi
+[[ "$failure" == *'Explicit ANSIBLE_PRIVATE_KEY'* ]]
 
 if failure=$(/bin/bash --noprofile --norc -c \
     'unset STIGMERGY_API_TOKEN STIGMERGY_API_TOKEN_FILE; source /source/profile.d/init.sh' 2>&1); then
@@ -58,4 +79,4 @@ if failure=$(STIGMERGY_API_TOKEN=wrong /bin/bash --noprofile --norc -c \
     echo 'Unauthorized API access did not stop the runner' >&2; exit 1
 fi
 [[ "$failure" == *'Runner credential retrieval failed'* && "$failure" != *'PRIVATE KEY'* ]]
-echo 'PASS: token-only startup, inventory SSH config, strict trust and fail-closed auth'
+echo 'PASS: interactive/Command/operator modes, scoped credentials, strict trust and fail-closed auth'

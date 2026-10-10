@@ -76,10 +76,16 @@ def main() -> None:
         def do_GET(self) -> None:
             """Reject unauthorized requests before looking up any Secret."""
             token = (workspace / 'token').read_text().strip()
-            if self.headers.get('Authorization') != 'Bearer ' + token:
+            authorization = self.headers.get('Authorization')
+            if authorization not in ('Bearer ' + token,
+                                     'Bearer command-test-token'):
                 self.send_error(403)
                 return
             route = self.path.removeprefix('/api/v1alpha1/')
+            # Fleet Commands can read inventory/trust, but never client Secrets.
+            if authorization == 'Bearer command-test-token' and route not in resources:
+                self.send_error(403)
+                return
             if route in resources:
                 value = resources[route]
             else:

@@ -14,7 +14,10 @@ runner_setup() {
         ln -s /homelab/ansible-roles/plays "$ANSIBLE_PLAYS_PATH" || return
     fi
     [[ "$CONTAINER_MODE" != init ]] || return 0
-    [[ "$CONTAINER_MODE" == normal || "$CONTAINER_MODE" == operator ]] || { echo 'Unknown container mode' >&2; return 1; }
+    case "$CONTAINER_MODE" in
+        normal|command|operator) ;;
+        *) echo 'Unknown container mode' >&2; return 1 ;;
+    esac
     : "${INVENTORY_CAPTURE_GROUP:?Inventory capture group is required}"
     [[ "$INVENTORY_CAPTURE_GROUP" =~ ^[a-z0-9][-a-z0-9.]*$ ]] || return 1
     : "${STIGMERGY_API_URL:?API URL is required}"
@@ -36,7 +39,7 @@ runner_setup() {
         # Interactive shells resolve the existing client identity using the API.
         python3 /homelab/ansible-roles/operators/runner_credentials.py || return
     else
-        # Concourse operators receive narrowly scoped credentials from OpenBao.
+        # Commands and operators receive scoped credentials from OpenBao.
         for variable in ANSIBLE_PRIVATE_KEY ANSIBLE_CERTIFICATE; do
             case "$variable" in
                 ANSIBLE_PRIVATE_KEY) destination=/home/keiichi/.ssh/id_ansible_mgmt; source=${ANSIBLE_PRIVATE_KEY_FILE:-} ;;

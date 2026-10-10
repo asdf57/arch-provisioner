@@ -50,7 +50,15 @@ or shell wrapper is needed. Start a fresh container to refresh inventory and
 credentials. This disposable container owns the generated SSH configuration;
 unsupported inventory SSH options fail initialization rather than being ignored.
 
-`CONTAINER_MODE=operator` takes explicit client credentials via
+`CONTAINER_MODE=command` takes explicit client credentials via
+`ANSIBLE_PRIVATE_KEY_FILE`/`ANSIBLE_CERTIFICATE_FILE` or their credential-valued
+environment counterparts supplied by Concourse/OpenBao. It still resolves the
+capture group's inventory, verified Server host trust and SSH config, but does
+not fetch client keys or certificates from API resources/Secrets. Generated
+Command pipelines use this mode with the existing scoped runner token.
+Missing supplied credentials fail startup; there is no fallback to API Secrets.
+
+`CONTAINER_MODE=operator` also takes explicit client credentials via
 `ANSIBLE_PRIVATE_KEY_FILE`/`ANSIBLE_CERTIFICATE_FILE` or their credential-valued
 environment counterparts supplied by Concourse/OpenBao. It does not fetch API
 Secrets and leaves
