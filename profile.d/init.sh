@@ -2,6 +2,18 @@
 
 export PATH="/homelab/.venv/bin:$PATH"
 
+runner_kubernetes_setup() {
+    [[ "$CONTAINER_MODE" == normal ]] || return 0
+    python3 /homelab/ansible-roles/operators/runner_kubernetes.py || return
+    export PATH="/home/keiichi/.local/bin:$PATH"
+    if [[ -f /home/keiichi/.kube/homelab-context.json ]]; then
+        export KUBECONFIG=/home/keiichi/.kube/config
+        export HOMELAB_DERIVED_KUBECONFIG="$KUBECONFIG"
+    elif [[ -n "${HOMELAB_DERIVED_KUBECONFIG:-}" && "${KUBECONFIG:-}" == "$HOMELAB_DERIVED_KUBECONFIG" ]]; then
+        unset KUBECONFIG HOMELAB_DERIVED_KUBECONFIG
+    fi
+}
+
 runner_setup() {
     : "${CONTAINER_MODE:?CONTAINER_MODE is required}"
     export GIT_ANSIBLE_ROLES_REPO=${GIT_ANSIBLE_ROLES_REPO:-https://github.com/asdf57/ansible-roles.git}
@@ -84,7 +96,8 @@ runner_setup() {
         export HOMELAB_DERIVED_KNOWN_HOSTS="$ANSIBLE_KNOWN_HOSTS_FILE"
         python3 /homelab/ansible-roles/operators/runner_trust.py || return
         python3 /etc/profile.d/inventory_ssh.py || return
-        return 0
+        runner_kubernetes_setup
+        return
     fi
     destination=/home/keiichi/.ssh/known_hosts
     if [[ -n "$source" ]]; then
@@ -107,6 +120,7 @@ runner_setup() {
         3<<< "Authorization: Bearer $STIGMERGY_API_TOKEN") || return
     printf '%s' "$inventory" | yq e '.status.inventory' - > "$ANSIBLE_INVENTORY" || return
     python3 /etc/profile.d/inventory_ssh.py || return
+    runner_kubernetes_setup
 }
 
 if ! runner_setup; then

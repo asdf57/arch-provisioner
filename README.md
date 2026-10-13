@@ -50,6 +50,19 @@ or shell wrapper is needed. Start a fresh container to refresh inventory and
 credentials. This disposable container owns the generated SSH configuration;
 unsupported inventory SSH options fail initialization rather than being ignored.
 
+An InventoryCaptureGroup labeled `homelab.io/kube-cluster: lab` selects the
+interactive shell's default Kubernetes context. The existing KubeCluster/lab
+and Server membership/role labels remain authoritative; the group label does
+not enroll nodes or create a cluster. Startup requires exactly one captured
+control-plane Server and retrieves its protected admin kubeconfig over strict
+managed SSH after verifying the installed Server/cluster identities and the
+actual Kubernetes namespace identity. Credentials stay in the disposable
+container's private `~/.kube/config`; they are never API status or log output.
+The exact cluster-version kubectl is checksum-verified into `~/.local/bin`.
+Use `kubectl get nodes` normally. Unlabeled groups have no default context.
+Command/operator modes never retrieve Kubernetes admin credentials. This is
+cluster-admin access for interactive learning, not a fine-grained RBAC design.
+
 `CONTAINER_MODE=command` takes explicit client credentials via
 `ANSIBLE_PRIVATE_KEY_FILE`/`ANSIBLE_CERTIFICATE_FILE` or their credential-valued
 environment counterparts supplied by Concourse/OpenBao. It still resolves the
