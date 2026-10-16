@@ -11,6 +11,7 @@ RUN apk add --no-cache \
     yq \
     python3 py3-pip py3-virtualenv \
     docker docker-compose \
+    helm \
     skopeo \
     openssh \
     coreutils \
@@ -59,5 +60,8 @@ COPY --chown=keiichi:keiichi profile.d/ /etc/profile.d/
 RUN chown -R keiichi:keiichi /homelab
 
 USER keiichi
+
+# Check Kubernetes tooling as the same unprivileged user as homelabc run.
+RUN helm version --short && ansible-doc kubernetes.core.helm >/dev/null
 
 CMD ["/bin/bash", "--login"]

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 [[ -f /.dockerenv ]] || { echo 'Run inside a disposable runner container' >&2; exit 1; }
+helm version --short
+ansible-doc kubernetes.core.helm >/dev/null
+
 workspace=$(mktemp -d)
 mkdir -p "$workspace/roles" "$workspace/plays"
 ssh-keygen -q -t ed25519 -N '' -f "$workspace/ca"

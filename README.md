@@ -21,6 +21,10 @@ docker build -t homelab:latest \
 Override `IMAGE_NAME` or `IMAGE_TAG` as needed. `GIT_ANSIBLE_ROLES_REPO` and
 `GIT_ANSIBLE_ROLES_REF` select the runtime checkout. Use `homelabc init` to
 initialize the platform and `homelabc run` to open an operator shell.
+
+Helm is installed in the image through Alpine's package manager. The build
+verifies `helm version --short` and the `kubernetes.core.helm` Ansible module as
+the unprivileged runner user. No startup installation or sudo is required.
 # Certificate-based management runner
 
 Normal mode requires only `STIGMERGY_API_TOKEN_FILE` (or `STIGMERGY_API_TOKEN`).
