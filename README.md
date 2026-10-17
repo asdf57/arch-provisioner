@@ -64,7 +64,10 @@ actual Kubernetes namespace identity. Credentials stay in the disposable
 container's private `~/.kube/config`; they are never API status or log output.
 The exact cluster-version kubectl is checksum-verified into `~/.local/bin`.
 Use `kubectl get nodes` normally. Unlabeled groups have no default context.
-Command/operator modes never retrieve Kubernetes admin credentials. This is
+Command/operator startup never retrieves Kubernetes admin credentials. A
+Configuration may explicitly request `context.kubeClusterRef`; its executor
+reuses the same identity verification and writes credentials only inside that
+execution's private temporary workspace, not the shared home. This is
 cluster-admin access for interactive learning, not a fine-grained RBAC design.
 
 `CONTAINER_MODE=command` takes explicit client credentials via
